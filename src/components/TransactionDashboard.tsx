@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,10 +22,7 @@ import {
   RefreshCw, 
   AlertCircle, 
   CheckCircle, 
-  Clock, 
-  XCircle, 
   Filter, 
-  Download,
   FileSpreadsheet,
   FileText,
   Calendar,
@@ -36,7 +32,7 @@ import {
   Building,
   LogOut
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import TransactionService, { API_CONFIGS } from '@/services/transactionService';
 import { Transaction, TransactionStatus } from '@/types/transaction';
@@ -164,49 +160,79 @@ const TransactionDashboard: React.FC = () => {
     });
   };
 
-  // Export to Excel
-  const exportToExcel = () => {
-    const exportData = transactions.map((transaction, index) => ({
-      'S.No': index + 1,
-      'Date': formatDate(transaction.date),
-      'Withdraw ID': transaction.withdrawId,
-      'Account Holder': transaction.accountHolderName || '-',
-      'Account Number': transaction.accountNumber || '-',
-      'IFSC Code': transaction.ifscCode || '-',
-      'UTR': transaction.utr || '-',
-      'Status': transaction.status,
-      'Success Date': transaction.successDate || '-'
-    }));
+  // Export to Excel using ExcelJS (secure alternative)
+  const exportToExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Transactions');
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Transactions');
-    
+    // Define columns
+    worksheet.columns = [
+      { header: 'S.No', key: 'sno', width: 8 },
+      { header: 'Date', key: 'date', width: 20 },
+      { header: 'Withdraw ID', key: 'withdrawId', width: 15 },
+      { header: 'Account Holder', key: 'accountHolder', width: 25 },
+      { header: 'Account Number', key: 'accountNumber', width: 20 },
+      { header: 'IFSC Code', key: 'ifscCode', width: 15 },
+      { header: 'UTR', key: 'utr', width: 20 },
+      { header: 'Status', key: 'status', width: 12 },
+      { header: 'Success Date', key: 'successDate', width: 20 }
+    ];
+
+    // Add data rows
+    transactions.forEach((transaction, index) => {
+      worksheet.addRow({
+        sno: index + 1,
+        date: formatDate(transaction.date),
+        withdrawId: transaction.withdrawId,
+        accountHolder: transaction.accountHolderName || '-',
+        accountNumber: transaction.accountNumber || '-',
+        ifscCode: transaction.ifscCode || '-',
+        utr: transaction.utr || '-',
+        status: transaction.status,
+        successDate: transaction.successDate || '-'
+      });
+    });
+
+    // Style the header row
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E6FF' }
+    };
+
     // Generate filename with timestamp
     const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
     const filename = `transactions_${selectedConfig}_page_${currentPage}_${timestamp}.xlsx`;
-    
-    XLSX.writeFile(wb, filename);
+
+    // Generate buffer and save file
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    saveAs(blob, filename);
   };
 
   // Export to CSV
   const exportToCSV = () => {
-    const exportData = transactions.map((transaction, index) => ({
-      'S.No': index + 1,
-      'Date': formatDate(transaction.date),
-      'Withdraw ID': transaction.withdrawId,
-      'Account Holder': transaction.accountHolderName || '-',
-      'Account Number': transaction.accountNumber || '-',
-      'IFSC Code': transaction.ifscCode || '-',
-      'UTR': transaction.utr || '-',
-      'Status': transaction.status,
-      'Success Date': transaction.successDate || '-'
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const csv = XLSX.utils.sheet_to_csv(ws);
+    // Convert to CSV format manually (secure approach)
+    const headers = ['S.No', 'Date', 'Withdraw ID', 'Account Holder', 'Account Number', 'IFSC Code', 'UTR', 'Status', 'Success Date'];
     
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const csvRows = [
+      headers.join(','), // Header row
+      ...transactions.map((transaction, index) => [
+        index + 1,
+        `"${formatDate(transaction.date)}"`,
+        `"${transaction.withdrawId}"`,
+        `"${transaction.accountHolderName || '-'}"`,
+        `"${transaction.accountNumber || '-'}"`,
+        `"${transaction.ifscCode || '-'}"`,
+        `"${transaction.utr || '-'}"`,
+        `"${transaction.status}"`,
+        `"${transaction.successDate || '-'}"`
+      ].join(','))
+    ];
+
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
     const filename = `transactions_${selectedConfig}_page_${currentPage}_${timestamp}.csv`;
     
@@ -477,7 +503,7 @@ const TransactionDashboard: React.FC = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  transactions.map((transaction, index) => (
+                  transactions.map((transaction, _index) => (
                     <TableRow 
                       key={transaction.id} 
                       className="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-all duration-200 group"
