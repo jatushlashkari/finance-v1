@@ -12,6 +12,12 @@ export async function GET(
     const pageSize = parseInt(searchParams.get('size') || '15');
     const skip = (page - 1) * pageSize;
 
+    // Filter parameters
+    const accountNumberFilter = searchParams.get('accountNumber');
+    const statusFilter = searchParams.get('status');
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+
     if (!['doa6ps', 'fwxeqk'].includes(account)) {
       return NextResponse.json(
         { error: 'Invalid account. Must be doa6ps or fwxeqk' },
@@ -21,12 +27,40 @@ export async function GET(
 
     const collection = await getCollection(account as 'doa6ps' | 'fwxeqk');
 
-    // Get total count
-    const total = await collection.countDocuments();
+    // Build filter query
+    const filterQuery: Record<string, unknown> = {};
+    
+    // Account number filter (partial match)
+    if (accountNumberFilter) {
+      filterQuery.accountNumber = { $regex: accountNumberFilter, $options: 'i' };
+    }
+    
+    // Status filter
+    if (statusFilter && statusFilter !== 'all') {
+      filterQuery.status = statusFilter;
+    }
+    
+    // Date range filter
+    if (startDate || endDate) {
+      const dateFilter: Record<string, string> = {};
+      if (startDate) {
+        dateFilter.$gte = startDate;
+      }
+      if (endDate) {
+        // Add end of day to include the entire end date
+        const endDateTime = new Date(endDate);
+        endDateTime.setHours(23, 59, 59, 999);
+        dateFilter.$lte = endDateTime.toISOString();
+      }
+      filterQuery.date = dateFilter;
+    }
+
+    // Get total count with filters
+    const total = await collection.countDocuments(filterQuery);
 
     // Get paginated transactions (sorted by date descending)
     const transactions = await collection
-      .find({})
+      .find(filterQuery)
       .sort({ date: -1 })
       .skip(skip)
       .limit(pageSize)

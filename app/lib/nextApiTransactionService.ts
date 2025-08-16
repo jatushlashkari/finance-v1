@@ -26,11 +26,37 @@ class NextApiTransactionService {
   async fetchTransactionsPaginated(
     account: 'doa6ps' | 'fwxeqk',
     page: number = 1,
-    pageSize: number = 15
+    pageSize: number = 15,
+    filters?: {
+      accountNumber?: string;
+      status?: string;
+      startDate?: string;
+      endDate?: string;
+    }
   ): Promise<PaginatedResult> {
     try {
+      // Build query parameters
+      const params = new URLSearchParams({
+        page: page.toString(),
+        size: pageSize.toString()
+      });
+
+      // Add filter parameters if provided
+      if (filters?.accountNumber) {
+        params.append('accountNumber', filters.accountNumber);
+      }
+      if (filters?.status && filters.status !== 'all') {
+        params.append('status', filters.status);
+      }
+      if (filters?.startDate) {
+        params.append('startDate', filters.startDate);
+      }
+      if (filters?.endDate) {
+        params.append('endDate', filters.endDate);
+      }
+
       const response = await fetch(
-        `${this.baseURL}/transactions/${account}?page=${page}&size=${pageSize}`,
+        `${this.baseURL}/transactions/${account}?${params.toString()}`,
         {
           method: 'GET',
           headers: {

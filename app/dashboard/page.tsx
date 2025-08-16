@@ -39,6 +39,7 @@ import NextApiTransactionService from '../lib/nextApiTransactionService';
 import { Transaction, TransactionStatus } from '../types/transaction';
 import { useAuth } from '../contexts/AuthContext';
 import SyncStatusIndicator from '../components/SyncStatusIndicator';
+import TransactionFilters from '../components/TransactionFilters';
 
 // Account configurations for UI display
 const ACCOUNTS = {
@@ -56,10 +57,18 @@ const TransactionDashboard: React.FC = () => {
   const [selectedAccount, setSelectedAccount] = useState<keyof typeof ACCOUNTS>('doa6ps');
   const [error, setError] = useState<string | null>(null);
   
+  // Filter states
+  const [filters, setFilters] = useState({
+    accountNumber: '',
+    status: 'all',
+    startDate: '',
+    endDate: ''
+  });
+  
   const pageSize = 15;
 
   // Load transactions for current page
-  const loadTransactions = async (page: number = 1) => {
+  const loadTransactions = async (page: number = 1, applyFilters: boolean = false) => {
     if (loading) return; // Prevent multiple simultaneous requests
     
     setLoading(true);
@@ -67,7 +76,21 @@ const TransactionDashboard: React.FC = () => {
     
     try {
       const service = new NextApiTransactionService();
-      const result = await service.fetchTransactionsPaginated(selectedAccount, page, pageSize);
+      
+      // Prepare filter object - only include non-empty filters
+      const filterParams = applyFilters ? {
+        accountNumber: filters.accountNumber || undefined,
+        status: filters.status !== 'all' ? filters.status : undefined,
+        startDate: filters.startDate || undefined,
+        endDate: filters.endDate || undefined
+      } : undefined;
+      
+      const result = await service.fetchTransactionsPaginated(
+        selectedAccount, 
+        page, 
+        pageSize, 
+        filterParams
+      );
       
       setTransactions(result.transactions);
       setTotalPages(result.totalPages);
@@ -88,6 +111,14 @@ const TransactionDashboard: React.FC = () => {
     const fetchData = async () => {
       setLoading(true);
       setError(null);
+      
+      // Clear filters when switching accounts
+      setFilters({
+        accountNumber: '',
+        status: 'all',
+        startDate: '',
+        endDate: ''
+      });
       
       try {
         const service = new NextApiTransactionService();
@@ -121,8 +152,30 @@ const TransactionDashboard: React.FC = () => {
   // Handle page navigation
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
-      loadTransactions(page);
+      loadTransactions(page, true); // Apply filters when navigating pages
     }
+  };
+
+  // Filter handlers
+  const handleFiltersChange = (newFilters: typeof filters) => {
+    setFilters(newFilters);
+  };
+
+  const handleApplyFilters = () => {
+    setCurrentPage(1); // Reset to first page when applying filters
+    loadTransactions(1, true);
+  };
+
+  const handleClearFilters = () => {
+    const clearedFilters = {
+      accountNumber: '',
+      status: 'all',
+      startDate: '',
+      endDate: ''
+    };
+    setFilters(clearedFilters);
+    setCurrentPage(1);
+    loadTransactions(1, false); // Load without filters
   };
 
   // Get status badge variant
@@ -341,6 +394,15 @@ const TransactionDashboard: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Transaction Filters */}
+        <TransactionFilters
+          filters={filters}
+          onFiltersChange={handleFiltersChange}
+          onApplyFilters={handleApplyFilters}
+          onClearFilters={handleClearFilters}
+          isLoading={loading}
+        />
 
         {/* Error Display */}
         {error && (
