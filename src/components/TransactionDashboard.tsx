@@ -33,14 +33,17 @@ import {
   Hash,
   User,
   CreditCard,
-  Building
+  Building,
+  LogOut
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import TransactionService, { API_CONFIGS } from '@/services/transactionService';
 import { Transaction, TransactionStatus } from '@/types/transaction';
+import { useAuth } from '@/contexts/AuthContext';
 
 const TransactionDashboard: React.FC = () => {
+  const { logout } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -324,6 +327,15 @@ const TransactionDashboard: React.FC = () => {
                 >
                   <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                   Refresh
+                </Button>
+                
+                <Button 
+                  onClick={logout}
+                  variant="outline"
+                  className="bg-red-50 hover:bg-red-100 border-red-200 text-red-700 shadow-lg hover:shadow-xl transition-all duration-200"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
                 </Button>
               </div>
             </div>

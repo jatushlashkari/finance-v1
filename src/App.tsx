@@ -1,11 +1,17 @@
 import TransactionDashboard from '@/components/TransactionDashboard';
+import { AuthProvider } from '@/contexts/AuthContext';
+import ProtectedRoute from '@/components/ProtectedRoute';
 import '@/globals.css';
 
 function App() {
   return (
-    <div className="min-h-screen bg-background">
-      <TransactionDashboard />
-    </div>
+    <AuthProvider>
+      <ProtectedRoute>
+        <div className="min-h-screen bg-background">
+          <TransactionDashboard />
+        </div>
+      </ProtectedRoute>
+    </AuthProvider>
   );
 }
 
