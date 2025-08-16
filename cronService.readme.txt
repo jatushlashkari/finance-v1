@@ -1,1 +1,0 @@
-﻿# LEGACY - This file is kept for backup. The cron service is now integrated in app/lib/cronService.ts

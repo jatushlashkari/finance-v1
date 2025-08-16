@@ -1,5 +1,5 @@
 // app/lib/cronService.ts
-import cron from 'node-cron';
+import cron, { ScheduledTask } from 'node-cron';
 import { MongoClient, Collection, Db } from 'mongodb';
 import axios from 'axios';
 
@@ -22,10 +22,7 @@ interface TransactionData {
   [key: string]: unknown;
 }
 
-interface SyncJobHandle {
-  destroy: () => void;
-  stop?: () => void;
-}
+
 
 // API Configurations
 const API_CONFIGS = {
@@ -61,7 +58,7 @@ export class IntegratedDataSyncService {
   private doa6psCollection: Collection<TransactionData> | null = null;
   private fwxeqkCollection: Collection<TransactionData> | null = null;
   private isConnected: boolean = false;
-  private syncJob: SyncJobHandle | null = null;
+  private syncJob: ScheduledTask | null = null;
 
   async connect() {
     if (this.isConnected) return;
@@ -347,10 +344,7 @@ export class IntegratedDataSyncService {
 
   stopCronJob() {
     if (this.syncJob) {
-      if (this.syncJob.stop) {
-        this.syncJob.stop();
-      }
-      this.syncJob.destroy();
+      this.syncJob.stop();
       this.syncJob = null;
       console.log('🛑 NextJS-CronSync: Cron job stopped');
     }
