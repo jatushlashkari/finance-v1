@@ -24,7 +24,7 @@ class NextApiTransactionService {
   }
 
   async fetchTransactionsPaginated(
-    account: 'doa6ps' | 'fwxeqk',
+    account: 'doa6ps' | 'fwxeqk' | 'all',
     page: number = 1,
     pageSize: number = 15,
     filters?: {
@@ -76,7 +76,7 @@ class NextApiTransactionService {
     }
   }
 
-  async getAllTransactions(account: 'doa6ps' | 'fwxeqk'): Promise<Transaction[]> {
+  async getAllTransactions(account: 'doa6ps' | 'fwxeqk' | 'all'): Promise<Transaction[]> {
     try {
       // For export, we'll fetch all pages
       let allTransactions: Transaction[] = [];

@@ -43,6 +43,7 @@ import TransactionFilters from '../components/TransactionFilters';
 
 // Account configurations for UI display
 const ACCOUNTS = {
+  all: { name: 'All Accounts', icon: '🌐' },
   doa6ps: { name: 'DOA6PS', icon: '🏢' },
   fwxeqk: { name: 'FWXEQK', icon: '📱' }
 } as const;
@@ -54,7 +55,7 @@ const TransactionDashboard: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const [selectedAccount, setSelectedAccount] = useState<keyof typeof ACCOUNTS>('doa6ps');
+  const [selectedAccount, setSelectedAccount] = useState<keyof typeof ACCOUNTS>('all');
   const [error, setError] = useState<string | null>(null);
   
   // Filter states
@@ -65,7 +66,11 @@ const TransactionDashboard: React.FC = () => {
     endDate: ''
   });
   
-  const pageSize = 15;
+  // Page size state
+  const [pageSize, setPageSize] = useState(15);
+  
+  // Page size options
+  const pageSizeOptions = [15, 50, 100, 200, 500, 1000, 5000];
 
   // Load transactions for current page
   const loadTransactions = async (page: number = 1, applyFilters: boolean = false) => {
@@ -147,7 +152,7 @@ const TransactionDashboard: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [selectedAccount]);
+  }, [selectedAccount, pageSize]); // Added pageSize dependency
 
   // Handle page navigation
   const handlePageChange = (page: number) => {
@@ -176,6 +181,12 @@ const TransactionDashboard: React.FC = () => {
     setFilters(clearedFilters);
     setCurrentPage(1);
     loadTransactions(1, false); // Load without filters
+  };
+
+  // Handle page size change
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize);
+    setCurrentPage(1); // Reset to first page when changing page size
   };
 
   // Get status badge variant
@@ -354,6 +365,7 @@ const TransactionDashboard: React.FC = () => {
                     className="appearance-none bg-white/90 backdrop-blur-sm border border-slate-200 rounded-xl px-4 py-2.5 pr-10 text-sm font-medium shadow-lg transition-all duration-200 hover:shadow-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                     disabled={loading}
                   >
+                    <option value="all">{ACCOUNTS.all.icon} {ACCOUNTS.all.name}</option>
                     <option value="doa6ps">{ACCOUNTS.doa6ps.icon} Account {ACCOUNTS.doa6ps.name}</option>
                     <option value="fwxeqk">{ACCOUNTS.fwxeqk.icon} Account {ACCOUNTS.fwxeqk.name}</option>
                   </select>
@@ -431,6 +443,14 @@ const TransactionDashboard: React.FC = () => {
                       Date
                     </div>
                   </TableHead>
+                  {selectedAccount === 'all' && (
+                    <TableHead className="h-14 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider bg-slate-50/50">
+                      <div className="flex items-center gap-2">
+                        <Building className="h-4 w-4" />
+                        Account
+                      </div>
+                    </TableHead>
+                  )}
                   <TableHead className="h-14 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider bg-slate-50/50">
                     <div className="flex items-center gap-2">
                       <Hash className="h-4 w-4" />
@@ -472,7 +492,7 @@ const TransactionDashboard: React.FC = () => {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-16">
+                    <TableCell colSpan={selectedAccount === 'all' ? 8 : 7} className="text-center py-16">
                       <div className="flex flex-col items-center gap-4">
                         <div className="h-12 w-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
                           <RefreshCw className="h-6 w-6 text-white animate-spin" />
@@ -488,7 +508,7 @@ const TransactionDashboard: React.FC = () => {
                   </TableRow>
                 ) : transactions.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-16">
+                    <TableCell colSpan={selectedAccount === 'all' ? 8 : 7} className="text-center py-16">
                       <div className="flex flex-col items-center gap-4">
                         <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center">
                           <FileSpreadsheet className="h-8 w-8 text-slate-400" />
@@ -513,6 +533,16 @@ const TransactionDashboard: React.FC = () => {
                           {formatDate(transaction.date)}
                         </span>
                       </TableCell>
+                      {selectedAccount === 'all' && (
+                        <TableCell className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">{ACCOUNTS[transaction.source as keyof typeof ACCOUNTS]?.icon || '📄'}</span>
+                            <span className="font-medium text-slate-900">
+                              {ACCOUNTS[transaction.source as keyof typeof ACCOUNTS]?.name || transaction.source?.toUpperCase() || 'Unknown'}
+                            </span>
+                          </div>
+                        </TableCell>
+                      )}
                       <TableCell className="px-6 py-4">
                         <div className="font-mono text-sm bg-slate-100 px-3 py-1.5 rounded-lg inline-block">
                           {transaction.withdrawId}
@@ -560,9 +590,34 @@ const TransactionDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Modern Pagination */}
+        {/* Table Controls & Pagination */}
         {!loading && transactions.length > 0 && (
-          <div className="flex justify-center">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            {/* Page Size Selector */}
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-slate-600">Rows per page:</span>
+              <div className="relative">
+                <select
+                  value={pageSize}
+                  onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                  className="appearance-none bg-white/90 backdrop-blur-sm border border-slate-200 rounded-lg px-3 py-2 pr-8 text-sm font-medium shadow-sm transition-all duration-200 hover:shadow-md focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  disabled={loading}
+                >
+                  {pageSizeOptions.map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Pagination */}
             <div className="rounded-2xl bg-white/80 backdrop-blur-sm border border-white/20 shadow-lg p-4">
               <Pagination>
                 <PaginationContent className="gap-2">
@@ -631,11 +686,17 @@ const TransactionDashboard: React.FC = () => {
             <div className="flex items-center gap-4 text-muted-foreground">
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                <span>Showing {transactions.length} of {total} transactions</span>
+                <span>
+                  Showing {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, total)} of {total} transactions
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-blue-500"></div>
                 <span>Page {currentPage} of {totalPages}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-purple-500"></div>
+                <span>{pageSize} per page</span>
               </div>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">

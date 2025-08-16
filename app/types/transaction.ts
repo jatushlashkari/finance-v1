@@ -9,6 +9,7 @@ export interface Transaction {
   accountHolderName?: string;
   ifscCode?: string;
   status: TransactionStatus;
+  source?: string; // Added to track which account/collection the transaction comes from
 }
 
 export type TransactionStatus = "Succeeded" | "Failed" | "Processing";
