@@ -11,7 +11,7 @@ export async function GET() {
         ? 'Sync is managed by Vercel Cron system' 
         : 'Cron sync service is integrated with Next.js',
       status: 'running',
-      schedule: 'Every 30 minutes',
+      schedule: 'Daily at 1 AM IST',
       accounts: ['DOA6PS', 'FWXEQK'],
       mode: isVercel ? 'Vercel Serverless Cron' : 'Integrated',
       platform: isVercel ? 'Vercel' : 'Self-hosted',

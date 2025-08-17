@@ -456,7 +456,7 @@ export class IntegratedDataSyncService {
       console.log(`FWXEQK: +${fwxeqkStats.inserted} new, ~${fwxeqkStats.updated} updated, ❌${fwxeqkStats.errors} errors`);
       console.log(`Total: +${doa6psStats.inserted + fwxeqkStats.inserted} new, ~${doa6psStats.updated + fwxeqkStats.updated} updated`);
       console.log('═══════════════════════════════════════');
-      console.log(`⏰ Next sync scheduled in 30 minutes (IST timezone)\n`);
+      console.log(`⏰ Next sync scheduled for tomorrow at 1 AM IST\n`);
       
     } catch (error) {
       console.error('❌ NextJS-CronSync: Sync operation failed:', error);
@@ -476,14 +476,14 @@ export class IntegratedDataSyncService {
       return null;
     }
 
-    // Schedule to run every 30 minutes: '0 */30 * * * *' (only in non-Vercel environments)
+    // Schedule to run every 30 minutes in dev (production uses Vercel cron: daily at 1 AM IST)
     this.syncJob = cron.schedule('0 */30 * * * *', async () => {
       await this.performSync();
     }, {
       timezone: "Asia/Kolkata"
     });
 
-    console.log('🕐 NextJS-CronSync: Integrated cron job started - running every 30 minutes');
+    console.log('🕐 NextJS-CronSync: Integrated cron job started - running daily at 1 AM IST');
     
     // Run initial sync after 10 seconds (only in development)
     if (process.env.NODE_ENV !== 'production') {
@@ -541,7 +541,7 @@ if (typeof window === 'undefined') {
   
   console.log('🚀 NextJS Finance-v1 Integrated Data Sync Service');
   console.log('📋 Configuration:');
-  console.log('   - Sync Interval: Every 30 minutes');
+  console.log('   - Sync Interval: Daily at 1 AM IST');
   console.log('   - Accounts: DOA6PS, FWXEQK');
   console.log('   - Database: MongoDB Cloud');
   console.log(`   - Mode: ${isVercel ? 'Vercel Serverless Cron' : 'Integrated with Next.js'}`);

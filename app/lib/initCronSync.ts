@@ -19,7 +19,7 @@ export function initializeCronSync() {
     console.log('\n🚀 Finance Dashboard - Integrated Sync Started');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('✅ Next.js server is running with integrated cron sync');
-    console.log('⏰ Auto-sync: Every 30 minutes');
+    console.log('⏰ Auto-sync: Once daily at 1 AM IST');
     console.log('📊 Accounts: DOA6PS, FWXEQK');
     console.log('🗄️ Database: MongoDB Cloud');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
