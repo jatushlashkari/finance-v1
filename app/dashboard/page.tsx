@@ -40,6 +40,7 @@ import { Transaction, TransactionStatus } from '../types/transaction';
 import { useAuth } from '../contexts/AuthContext';
 import SyncStatusIndicator from '../components/SyncStatusIndicator';
 import TransactionFilters from '../components/TransactionFilters';
+import AccountSummaryCard from '../components/AccountSummaryCard';
 
 // Account configurations for UI display
 const ACCOUNTS = {
@@ -71,6 +72,16 @@ const TransactionDashboard: React.FC = () => {
   
   // Page size options
   const pageSizeOptions = [15, 50, 100, 200, 500, 1000, 5000];
+
+  // Summary state
+  const [summaryData, setSummaryData] = useState<{
+    accountNumber: string;
+    totalAmount: number;
+    totalTransactions: number;
+    status: string;
+    account: string;
+  } | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
 
   // Load transactions for current page
   const loadTransactions = async (page: number = 1, applyFilters: boolean = false) => {
@@ -169,6 +180,7 @@ const TransactionDashboard: React.FC = () => {
   const handleApplyFilters = () => {
     setCurrentPage(1); // Reset to first page when applying filters
     loadTransactions(1, true);
+    loadSummaryData(); // Load summary data when filters are applied
   };
 
   const handleClearFilters = () => {
@@ -181,12 +193,41 @@ const TransactionDashboard: React.FC = () => {
     setFilters(clearedFilters);
     setCurrentPage(1);
     loadTransactions(1, false); // Load without filters
+    setSummaryData(null); // Clear summary data when filters are cleared
   };
 
   // Handle page size change
   const handlePageSizeChange = (newPageSize: number) => {
     setPageSize(newPageSize);
     setCurrentPage(1); // Reset to first page when changing page size
+  };
+
+  // Load summary data when account number filter is applied
+  const loadSummaryData = async () => {
+    if (!filters.accountNumber) {
+      setSummaryData(null);
+      return;
+    }
+
+    setSummaryLoading(true);
+    try {
+      const service = new NextApiTransactionService();
+      const summary = await service.getTransactionSummary(
+        selectedAccount,
+        filters.accountNumber,
+        {
+          status: filters.status !== 'all' ? filters.status : 'Succeeded',
+          startDate: filters.startDate || undefined,
+          endDate: filters.endDate || undefined
+        }
+      );
+      setSummaryData(summary);
+    } catch (error) {
+      console.error('Error loading summary data:', error);
+      setSummaryData(null);
+    } finally {
+      setSummaryLoading(false);
+    }
   };
 
   // Get status badge variant
@@ -415,6 +456,18 @@ const TransactionDashboard: React.FC = () => {
           onClearFilters={handleClearFilters}
           isLoading={loading}
         />
+
+        {/* Account Summary Card - Show when account number filter is applied */}
+        {(summaryData || summaryLoading) && filters.accountNumber && (
+          <AccountSummaryCard
+            accountNumber={filters.accountNumber}
+            totalAmount={summaryData?.totalAmount || 0}
+            totalTransactions={summaryData?.totalTransactions || 0}
+            status={summaryData?.status || 'Succeeded'}
+            account={selectedAccount}
+            isLoading={summaryLoading}
+          />
+        )}
 
         {/* Error Display */}
         {error && (

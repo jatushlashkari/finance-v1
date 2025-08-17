@@ -117,6 +117,59 @@ class NextApiTransactionService {
     }
   }
 
+  async getTransactionSummary(
+    account: 'doa6ps' | 'fwxeqk' | 'all',
+    accountNumber: string,
+    filters?: {
+      status?: string;
+      startDate?: string;
+      endDate?: string;
+    }
+  ): Promise<{
+    accountNumber: string;
+    status: string;
+    totalAmount: number;
+    totalTransactions: number;
+    account: string;
+  }> {
+    try {
+      // Build query parameters
+      const params = new URLSearchParams({
+        account: account,
+        accountNumber: accountNumber,
+        status: filters?.status || 'Succeeded'
+      });
+
+      // Add filter parameters if provided
+      if (filters?.startDate) {
+        params.append('startDate', filters.startDate);
+      }
+      if (filters?.endDate) {
+        params.append('endDate', filters.endDate);
+      }
+
+      const response = await fetch(
+        `${this.baseURL}/summary?${params.toString()}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result.data;
+    } catch (error) {
+      console.error('Error fetching transaction summary:', error);
+      throw new Error('Failed to fetch transaction summary');
+    }
+  }
+
   async checkHealth(): Promise<{ status: string; timestamp: string; database: string }> {
     try {
       const response = await fetch(`${this.baseURL}/health`, {
