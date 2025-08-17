@@ -3,13 +3,18 @@ import { getCronSyncService } from '../../lib/cronService';
 
 export async function GET() {
   try {
+    const isVercel = process.env.VERCEL === '1';
+    
     return NextResponse.json({
       success: true,
-      message: 'Cron sync service is integrated with Next.js',
+      message: isVercel 
+        ? 'Sync is managed by Vercel Cron system' 
+        : 'Cron sync service is integrated with Next.js',
       status: 'running',
       schedule: 'Every 30 minutes',
       accounts: ['DOA6PS', 'FWXEQK'],
-      mode: 'Integrated',
+      mode: isVercel ? 'Vercel Serverless Cron' : 'Integrated',
+      platform: isVercel ? 'Vercel' : 'Self-hosted',
       timestamp: new Date().toISOString()
     });
   } catch (error) {

@@ -182,31 +182,130 @@ export class IntegratedDataSyncService {
         }
       }
 
-      return {
+      // Get raw dates from API - try multiple fields for the transaction date
+      const possibleDateFields = [record.created, record.date, record.createdTime, record.created_at];
+      const rawTransactionDate = possibleDateFields.find(date => date && String(date).trim() !== '') || '';
+      
+      // Get raw success date from API - try multiple fields
+      const possibleSuccessDateFields = [record.modified, record.success_date, record.successDate, record.updated];
+      const rawSuccessDate = possibleSuccessDateFields.find(date => date && String(date).trim() !== '') || '';
+
+      const processedTransaction = {
         id: String(record.withdrawId || record.id || ''),
         withdrawId: String(record.withdrawId || ''),
-        date: this.formatDate(String(record.created || record.date || '')),
+        date: this.parseAndFormatApiDate(String(rawTransactionDate)), // Store exact API date
+        amount: Number(record.amount || 0), // Extract amount from API
         accountHolderName: String(withdrawRequest.bankAccountHolderName || ''),
         accountNumber: String(withdrawRequest.bankAccountNumber || ''),
         ifscCode: String(withdrawRequest.bankAccountIfscCode || ''),
         utr: String(record.utr || ''),
         status: this.getStatusText(Number(record.status || 0)),
         statusCode: parseInt(String(record.status || '0')),
-        successDate: String(record.modified || record.success_date || ''),
+        successDate: rawSuccessDate ? this.parseAndFormatApiDate(String(rawSuccessDate)) : '', // Store exact API success date
         account: account,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        createdAt: this.getCurrentISTDate(), // Only system timestamps use IST
+        updatedAt: this.getCurrentISTDate()
       };
+
+
+
+      return processedTransaction;
     });
   }
 
-  private formatDate(dateString: string) {
+  private parseAndFormatApiDate(dateString: string): string {
     if (!dateString) return '';
+    
     try {
-      return new Date(dateString).toISOString();
-    } catch {
-      return dateString;
+      // Handle different date formats from the API
+      let parsedDate: Date;
+      
+      // Check if it's already a timestamp (13 digits)
+      if (/^\d{13}$/.test(dateString)) {
+        parsedDate = new Date(parseInt(dateString));
+      }
+      // Check if it's a 10-digit timestamp (seconds)
+      else if (/^\d{10}$/.test(dateString)) {
+        parsedDate = new Date(parseInt(dateString) * 1000);
+      }
+      // Check if it's already an ISO date string with timezone
+      else if (dateString.includes('T') && (dateString.includes('Z') || dateString.includes('+'))) {
+        parsedDate = new Date(dateString);
+      }
+      // Handle space-separated date format like "2025-08-17 13:12:13" - treat as IST
+      else if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(dateString)) {
+        // API gives us IST time without timezone info, so add IST offset
+        parsedDate = new Date(dateString + '+05:30');
+      }
+      // Try direct parsing for other formats
+      else {
+        parsedDate = new Date(dateString);
+      }
+
+      if (isNaN(parsedDate.getTime())) {
+        console.warn(`NextJS-CronSync: Could not parse API date: ${dateString}, returning original`);
+        return dateString; // Return original if can't parse
+      }
+      
+      // Return as ISO string for consistent storage format
+      return parsedDate.toISOString();
+    } catch (error) {
+      console.error(`NextJS-CronSync: Error parsing API date ${dateString}:`, error);
+      return dateString; // Return original if error
     }
+  }
+
+  private formatDateIST(dateString: string) {
+    if (!dateString) return '';
+    
+    try {
+      // Handle different date formats from the API
+      let parsedDate: Date;
+      
+      // Check if it's already a timestamp (13 digits)
+      if (/^\d{13}$/.test(dateString)) {
+        parsedDate = new Date(parseInt(dateString));
+      }
+      // Check if it's a timestamp in seconds (10 digits)
+      else if (/^\d{10}$/.test(dateString)) {
+        parsedDate = new Date(parseInt(dateString) * 1000);
+      }
+      // Check if it's in format like "2025-08-17 14:30:25" or "2025-08-17T14:30:25"
+      else if (/^\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}:\d{2}/.test(dateString)) {
+        // Replace space with T for proper ISO format
+        const isoString = dateString.replace(' ', 'T');
+        // Assume the date is in IST if no timezone info is provided
+        if (!isoString.includes('Z') && !isoString.includes('+') && !isoString.includes('-', 10)) {
+          // Treat as IST time and convert to UTC for storage
+          parsedDate = new Date(isoString + '+05:30');
+        } else {
+          parsedDate = new Date(isoString);
+        }
+      }
+      // Try direct parsing for other formats
+      else {
+        parsedDate = new Date(dateString);
+      }
+      
+      // Validate the parsed date
+      if (isNaN(parsedDate.getTime())) {
+        console.warn(`⚠️ Invalid date format: ${dateString}, using current IST date`);
+        return this.getCurrentISTDate().toISOString();
+      }
+      
+      // Store as ISO string (UTC) but ensure the original time was interpreted correctly
+      return parsedDate.toISOString();
+    } catch (error) {
+      console.warn(`⚠️ Date parsing error for: ${dateString}, using current IST date. Error:`, error);
+      return this.getCurrentISTDate().toISOString();
+    }
+  }
+
+  private getCurrentISTDate(): Date {
+    // Get current time in IST (UTC+5:30)
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30 in milliseconds
+    return new Date(now.getTime() + istOffset);
   }
 
   private getStatusText(statusCode: number) {
@@ -245,26 +344,50 @@ export class IntegratedDataSyncService {
           const existingTransaction = await collection.findOne({ withdrawId: transaction.withdrawId });
           
           if (existingTransaction) {
-            // Check if any important fields have changed
-            const hasChanges = 
-              existingTransaction.status !== transaction.status ||
-              existingTransaction.statusCode !== transaction.statusCode ||
-              existingTransaction.successDate !== transaction.successDate ||
-              existingTransaction.utr !== transaction.utr ||
-              (!existingTransaction.utr && transaction.utr) ||
-              (!existingTransaction.successDate && transaction.successDate);
+            // Check if any important fields have changed - prioritize success date and status
+            const hasStatusChange = existingTransaction.status !== transaction.status || 
+                                  existingTransaction.statusCode !== transaction.statusCode;
+            
+            const hasSuccessDateChange = existingTransaction.successDate !== transaction.successDate;
+            
+            const hasDateChange = existingTransaction.date !== transaction.date;
+            
+            const hasAmountChange = existingTransaction.amount !== transaction.amount;
+            
+            const hasUtrChange = (existingTransaction.utr || '') !== (transaction.utr || '') ||
+                               (!existingTransaction.utr && transaction.utr);
+
+            const hasNewSuccessDate = !existingTransaction.successDate && transaction.successDate;
+
+            const hasChanges = hasStatusChange || hasSuccessDateChange || hasDateChange || hasAmountChange || hasUtrChange || hasNewSuccessDate;
+
+
 
             if (hasChanges) {
-              // Update the existing record
+              // Log the changes for debugging
+              if (process.env.NODE_ENV === 'development') {
+                console.log(`🔄 Changes detected for ${transaction.withdrawId}:`, {
+                  statusChange: hasStatusChange ? `${existingTransaction.status} → ${transaction.status}` : null,
+                  successDateChange: hasSuccessDateChange ? `${existingTransaction.successDate} → ${transaction.successDate}` : null,
+                  dateChange: hasDateChange ? `${existingTransaction.date} → ${transaction.date}` : null,
+                  amountChange: hasAmountChange ? `${existingTransaction.amount} → ${transaction.amount}` : null,
+                  utrChange: hasUtrChange ? `${existingTransaction.utr} → ${transaction.utr}` : null,
+                  hasNewSuccessDate: hasNewSuccessDate
+                });
+              }
+
+              // Update the existing record with all new data from API
               await collection.updateOne(
                 { withdrawId: transaction.withdrawId },
                 { 
                   $set: {
+                    date: transaction.date, // Update with exact API date
+                    amount: transaction.amount, // Update with exact API amount
                     status: transaction.status,
                     statusCode: transaction.statusCode,
-                    successDate: transaction.successDate,
+                    successDate: transaction.successDate, // Update with exact API success date
                     utr: transaction.utr,
-                    updatedAt: new Date()
+                    updatedAt: this.getCurrentISTDate() // Only system timestamp uses IST
                   }
                 }
               );
@@ -293,8 +416,17 @@ export class IntegratedDataSyncService {
   }
 
   private async performSync() {
-    const startTime = new Date();
-    console.log(`\n🚀 NextJS-CronSync: Starting scheduled sync at ${startTime.toISOString()}`);
+    const startTime = this.getCurrentISTDate();
+    const startTimeIST = startTime.toLocaleString('en-IN', { 
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit', 
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+    console.log(`\n🚀 NextJS-CronSync: Starting scheduled sync at ${startTimeIST} IST`);
 
     try {
       await this.connect();
@@ -305,16 +437,26 @@ export class IntegratedDataSyncService {
         this.syncAccount('fwxeqk')
       ]);
 
-      const endTime = new Date();
+      const endTime = this.getCurrentISTDate();
       const duration = endTime.getTime() - startTime.getTime();
 
-      console.log(`\n📊 NextJS-CronSync: Sync Summary (${duration}ms)`);
+      const endTimeIST = endTime.toLocaleString('en-IN', { 
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit', 
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+
+      console.log(`\n📊 NextJS-CronSync: Sync Summary (${duration}ms) - Completed at ${endTimeIST} IST`);
       console.log('═══════════════════════════════════════');
       console.log(`DOA6PS: +${doa6psStats.inserted} new, ~${doa6psStats.updated} updated, ❌${doa6psStats.errors} errors`);
       console.log(`FWXEQK: +${fwxeqkStats.inserted} new, ~${fwxeqkStats.updated} updated, ❌${fwxeqkStats.errors} errors`);
       console.log(`Total: +${doa6psStats.inserted + fwxeqkStats.inserted} new, ~${doa6psStats.updated + fwxeqkStats.updated} updated`);
       console.log('═══════════════════════════════════════');
-      console.log(`⏰ Next sync scheduled in 30 minutes\n`);
+      console.log(`⏰ Next sync scheduled in 30 minutes (IST timezone)\n`);
       
     } catch (error) {
       console.error('❌ NextJS-CronSync: Sync operation failed:', error);
@@ -325,19 +467,30 @@ export class IntegratedDataSyncService {
     // Only start if we're in a server environment (not during build)
     if (typeof window !== 'undefined') return;
 
-    // Schedule to run every 30 minutes: '0 */30 * * * *'
+    // Check if we're on Vercel (serverless environment)
+    const isVercel = process.env.VERCEL === '1';
+    
+    if (isVercel) {
+      console.log('🚀 Vercel Environment: Cron jobs will be handled by Vercel Cron system');
+      console.log('📝 Make sure vercel.json is configured with cron schedule');
+      return null;
+    }
+
+    // Schedule to run every 30 minutes: '0 */30 * * * *' (only in non-Vercel environments)
     this.syncJob = cron.schedule('0 */30 * * * *', async () => {
       await this.performSync();
     }, {
-      timezone: "UTC"
+      timezone: "Asia/Kolkata"
     });
 
     console.log('🕐 NextJS-CronSync: Integrated cron job started - running every 30 minutes');
     
-    // Run initial sync after 10 seconds
-    setTimeout(() => {
-      this.performSync();
-    }, 10000);
+    // Run initial sync after 10 seconds (only in development)
+    if (process.env.NODE_ENV !== 'production') {
+      setTimeout(() => {
+        this.performSync();
+      }, 10000);
+    }
 
     return this.syncJob;
   }
@@ -377,16 +530,20 @@ export function getCronSyncService(): IntegratedDataSyncService {
 }
 
 // Auto-start the cron job when this module is imported in server environment
-if (typeof window === 'undefined' && process.env.NODE_ENV !== 'production') {
-  // Only auto-start in development mode
-  const service = getCronSyncService();
-  service.startCronJob();
+if (typeof window === 'undefined') {
+  const isVercel = process.env.VERCEL === '1';
+  
+  if (!isVercel && process.env.NODE_ENV !== 'production') {
+    // Only auto-start in development mode (non-Vercel)
+    const service = getCronSyncService();
+    service.startCronJob();
+  }
   
   console.log('🚀 NextJS Finance-v1 Integrated Data Sync Service');
   console.log('📋 Configuration:');
   console.log('   - Sync Interval: Every 30 minutes');
   console.log('   - Accounts: DOA6PS, FWXEQK');
   console.log('   - Database: MongoDB Cloud');
-  console.log('   - Mode: Integrated with Next.js');
+  console.log(`   - Mode: ${isVercel ? 'Vercel Serverless Cron' : 'Integrated with Next.js'}`);
   console.log('');
 }

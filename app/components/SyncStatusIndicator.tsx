@@ -25,6 +25,18 @@ const SyncStatusIndicator: React.FC = () => {
     try {
       const response = await fetch('/api/sync');
       const data = await response.json();
+      
+      // Check if we're on Vercel and enhance the status
+      if (typeof window !== 'undefined') {
+        const isVercel = window.location.hostname.includes('vercel.app') || 
+                        window.location.hostname.includes('.vercel.app');
+        
+        if (isVercel && data.success) {
+          data.mode = 'Vercel Serverless Cron';
+          data.message = 'Vercel cron system is managing sync schedule';
+        }
+      }
+      
       setSyncStatus(data);
     } catch (error) {
       console.error('Failed to check sync status:', error);
