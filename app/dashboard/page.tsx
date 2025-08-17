@@ -275,15 +275,61 @@ const TransactionDashboard: React.FC = () => {
     }
   };
 
+  // Format date for Excel export - YYYY-MM-DD HH:MM:SS format
+  const formatDateForExcel = (dateString: string) => {
+    if (!dateString) return '-';
+    try {
+      const date = new Date(dateString);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    } catch {
+      return dateString;
+    }
+  };
+
+  // Copy text to clipboard on double-click
+  const copyToClipboard = async (text: string, fieldName: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      // You could add a toast notification here if needed
+      console.log(`Copied ${fieldName}: ${text}`);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        console.log(`Copied ${fieldName}: ${text}`);
+      } catch (fallbackErr) {
+        console.error('Fallback copy failed: ', fallbackErr);
+      }
+      document.body.removeChild(textArea);
+    }
+  };
+
   // Export to Excel using ExcelJS (secure alternative)
   const exportToExcel = async () => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Transactions');
 
-    // Define columns
-    worksheet.columns = [
+    // Define columns - conditionally include Account column when showing all accounts
+    const baseColumns = [
       { header: 'S.No', key: 'sno', width: 8 },
-      { header: 'Date', key: 'date', width: 20 },
+      { header: 'Date', key: 'date', width: 20 }
+    ];
+
+    const accountColumn = { header: 'Account', key: 'account', width: 15 };
+
+    const remainingColumns = [
       { header: 'Withdraw ID', key: 'withdrawId', width: 15 },
       { header: 'Account Holder', key: 'accountHolder', width: 25 },
       { header: 'Account Number', key: 'accountNumber', width: 20 },
@@ -293,18 +339,36 @@ const TransactionDashboard: React.FC = () => {
       { header: 'Success Date', key: 'successDate', width: 20 }
     ];
 
+    // Combine columns based on whether we're showing all accounts
+    worksheet.columns = selectedAccount === 'all' 
+      ? [...baseColumns, accountColumn, ...remainingColumns]
+      : [...baseColumns, ...remainingColumns];
+
     // Add data rows
     transactions.forEach((transaction, index) => {
-      worksheet.addRow({
+      const baseRowData = {
         sno: index + 1,
-        date: formatDate(transaction.date),
+        date: formatDateForExcel(transaction.date)
+      };
+
+      const accountData = selectedAccount === 'all' ? {
+        account: ACCOUNTS[transaction.source as keyof typeof ACCOUNTS]?.name || transaction.source?.toUpperCase() || 'Unknown'
+      } : {};
+
+      const remainingRowData = {
         withdrawId: transaction.withdrawId,
         accountHolder: transaction.accountHolderName || '-',
         accountNumber: transaction.accountNumber || '-',
         ifscCode: transaction.ifscCode || '-',
         utr: transaction.utr || '-',
         status: transaction.status,
-        successDate: transaction.successDate || '-'
+        successDate: transaction.successDate ? formatDateForExcel(transaction.successDate) : '-'
+      };
+
+      worksheet.addRow({
+        ...baseRowData,
+        ...accountData,
+        ...remainingRowData
       });
     });
 
@@ -381,8 +445,8 @@ const TransactionDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex">
-      {/* Redesigned Sidebar */}
-      <div className="w-72 flex-shrink-0 bg-gradient-to-b from-white via-slate-50/80 to-white shadow-2xl border-r border-slate-200/50">
+      {/* Redesigned Sidebar - Fixed Position */}
+      <div className="w-72 fixed left-0 top-0 h-screen bg-gradient-to-b from-white via-slate-50/80 to-white shadow-2xl border-r border-slate-200/50 z-10">
         <div className="h-full flex flex-col">
           {/* Compact Header */}
           <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-blue-600 to-purple-700 text-white">
@@ -422,7 +486,7 @@ const TransactionDashboard: React.FC = () => {
           </div>
 
           {/* Sidebar Content - More Compact */}
-          <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+          <div className="flex-1 min-h-0 p-4 space-y-4 overflow-y-auto">
             {/* Account Selector - Redesigned */}
             <div className="space-y-2">
               <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide flex items-center gap-1.5">
@@ -466,8 +530,8 @@ const TransactionDashboard: React.FC = () => {
             )}
           </div>
           
-          {/* Action Buttons - Bottom Fixed */}
-          <div className="p-4 bg-slate-50/50 border-t border-slate-200">
+          {/* Action Buttons - Fixed at Bottom */}
+          <div className="flex-shrink-0 p-4 bg-slate-50/50 border-t border-slate-200">
             <div className="space-y-2">
               <Button 
                 onClick={exportToExcel} 
@@ -505,7 +569,7 @@ const TransactionDashboard: React.FC = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 p-6 space-y-6 overflow-y-auto">
+      <div className="flex-1 ml-72 p-6 space-y-6 overflow-y-auto">
         {/* Error Display */}
         {error && (
           <div className="rounded-2xl bg-red-50 border border-red-200 p-6 shadow-lg">
@@ -618,13 +682,21 @@ const TransactionDashboard: React.FC = () => {
                       key={transaction.id} 
                       className="border-b border-slate-100 hover:bg-slate-50/50 transition-all duration-200 group"
                     >
-                      <TableCell className="px-6 py-4">
+                      <TableCell 
+                        className="px-6 py-4 cursor-copy" 
+                        onDoubleClick={() => copyToClipboard(formatDate(transaction.date), 'Date')}
+                        title="Double-click to copy"
+                      >
                         <span className="font-mono text-sm font-medium text-slate-900">
                           {formatDate(transaction.date)}
                         </span>
                       </TableCell>
                       {selectedAccount === 'all' && (
-                        <TableCell className="px-6 py-4">
+                        <TableCell 
+                          className="px-6 py-4 cursor-copy" 
+                          onDoubleClick={() => copyToClipboard(ACCOUNTS[transaction.source as keyof typeof ACCOUNTS]?.name || transaction.source?.toUpperCase() || 'Unknown', 'Account')}
+                          title="Double-click to copy"
+                        >
                           <div className="flex items-center gap-2">
                             <span className="text-lg">{ACCOUNTS[transaction.source as keyof typeof ACCOUNTS]?.icon || '📄'}</span>
                             <span className="font-medium text-slate-900">
@@ -633,32 +705,56 @@ const TransactionDashboard: React.FC = () => {
                           </div>
                         </TableCell>
                       )}
-                      <TableCell className="px-6 py-4">
+                      <TableCell 
+                        className="px-6 py-4 cursor-copy" 
+                        onDoubleClick={() => copyToClipboard(transaction.withdrawId, 'Withdraw ID')}
+                        title="Double-click to copy"
+                      >
                         <div className="font-mono text-sm bg-slate-100 px-3 py-1.5 rounded-lg inline-block">
                           {transaction.withdrawId}
                         </div>
                       </TableCell>
-                      <TableCell className="px-6 py-4">
+                      <TableCell 
+                        className="px-6 py-4 cursor-copy" 
+                        onDoubleClick={() => copyToClipboard(transaction.accountHolderName || '-', 'Account Holder')}
+                        title="Double-click to copy"
+                      >
                         <span className="font-medium text-slate-900">
                           {transaction.accountHolderName || '-'}
                         </span>
                       </TableCell>
-                      <TableCell className="px-6 py-4">
+                      <TableCell 
+                        className="px-6 py-4 cursor-copy" 
+                        onDoubleClick={() => copyToClipboard(transaction.accountNumber || '-', 'Account Number')}
+                        title="Double-click to copy"
+                      >
                         <span className="font-mono text-sm bg-slate-100 px-3 py-1.5 rounded-lg">
                           {transaction.accountNumber || '-'}
                         </span>
                       </TableCell>
-                      <TableCell className="px-6 py-4">
+                      <TableCell 
+                        className="px-6 py-4 cursor-copy" 
+                        onDoubleClick={() => copyToClipboard(transaction.ifscCode || '-', 'IFSC Code')}
+                        title="Double-click to copy"
+                      >
                         <span className="font-mono text-sm font-medium text-slate-600">
                           {transaction.ifscCode || '-'}
                         </span>
                       </TableCell>
-                      <TableCell className="px-6 py-4">
+                      <TableCell 
+                        className="px-6 py-4 cursor-copy" 
+                        onDoubleClick={() => copyToClipboard(transaction.utr || '-', 'UTR')}
+                        title="Double-click to copy"
+                      >
                         <span className="font-mono text-sm text-slate-500">
                           {transaction.utr || '-'}
                         </span>
                       </TableCell>
-                      <TableCell className="px-6 py-4">
+                      <TableCell 
+                        className="px-6 py-4 cursor-copy" 
+                        onDoubleClick={() => copyToClipboard(transaction.status, 'Status')}
+                        title="Double-click to copy"
+                      >
                         <Badge 
                           variant="outline"
                           className={`font-medium flex items-center gap-2 ${getStatusVariant(transaction.status) === 'secondary' 
