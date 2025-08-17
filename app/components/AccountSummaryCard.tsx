@@ -1,12 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { 
   CreditCard, 
   Hash, 
-  TrendingUp, 
   CheckCircle,
   DollarSign
 } from 'lucide-react';
@@ -16,7 +14,7 @@ interface AccountSummaryCardProps {
   totalAmount: number;
   totalTransactions: number;
   status: string;
-  account: string;
+  _account: string;
   isLoading?: boolean;
 }
 
@@ -25,7 +23,7 @@ const AccountSummaryCard: React.FC<AccountSummaryCardProps> = ({
   totalAmount,
   totalTransactions,
   status,
-  account,
+  _account,
   isLoading = false
 }) => {
   // Format currency
@@ -43,104 +41,87 @@ const AccountSummaryCard: React.FC<AccountSummaryCardProps> = ({
     return new Intl.NumberFormat('en-IN').format(num);
   };
 
-  // Get account display name
-  const getAccountName = (acc: string) => {
-    switch (acc) {
-      case 'doa6ps': return 'DOA6PS';
-      case 'fwxeqk': return 'FWXEQK';
-      case 'all': return 'All Accounts';
-      default: return acc.toUpperCase();
-    }
-  };
-
   if (isLoading) {
     return (
-      <Card className="mb-6 bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 border border-green-200/50 shadow-xl">
-        <CardContent className="p-6">
-          <div className="animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-1/3 mb-4"></div>
-            <div className="h-8 bg-gray-200 rounded w-1/2 mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg border border-indigo-200 p-3">
+        <div className="animate-pulse">
+          <div className="h-3 bg-indigo-200 rounded w-2/3 mb-2"></div>
+          <div className="h-5 bg-indigo-200 rounded w-1/2 mb-1"></div>
+          <div className="h-3 bg-indigo-200 rounded w-1/3"></div>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className="mb-6 bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 border border-green-200/50 shadow-xl hover:shadow-2xl transition-all duration-300">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-semibold text-green-800 flex items-center gap-2">
-          <div className="p-2 bg-green-100 rounded-lg">
-            <TrendingUp className="h-5 w-5 text-green-600" />
-          </div>
-          Account Summary
-          <Badge variant="outline" className="ml-auto bg-green-100 text-green-700 border-green-300">
-            {status} Only
-          </Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <div className="space-y-4">
-          {/* Account Information */}
-          <div className="flex items-center justify-between p-3 bg-white/80 rounded-lg border border-green-100">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <CreditCard className="h-4 w-4 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">Account Number</p>
-                <p className="font-mono text-lg font-semibold text-gray-900">{accountNumber}</p>
-              </div>
-            </div>
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-              {getAccountName(account)}
-            </Badge>
-          </div>
+    <div className="bg-gradient-to-br from-indigo-50 via-blue-50 to-purple-50 rounded-lg border border-indigo-200/60 p-3 shadow-sm">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className="h-2 w-2 rounded-full bg-indigo-500"></div>
+          <span className="text-xs font-semibold text-indigo-700 uppercase tracking-wide">
+            Account Summary
+          </span>
+        </div>
+        <Badge variant="outline" className="text-xs bg-indigo-100 text-indigo-700 border-indigo-300 px-2 py-0.5">
+          {status}
+        </Badge>
+      </div>
 
-          {/* Summary Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Total Amount */}
-            <div className="p-4 bg-gradient-to-br from-emerald-100 to-green-100 rounded-lg border border-emerald-200">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-200 rounded-lg">
-                  <DollarSign className="h-5 w-5 text-emerald-700" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-emerald-700">Total Amount</p>
-                  <p className="text-2xl font-bold text-emerald-900">
-                    {formatCurrency(totalAmount)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Transaction Count */}
-            <div className="p-4 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-lg border border-blue-200">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-200 rounded-lg">
-                  <Hash className="h-5 w-5 text-blue-700" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-blue-700">Transactions</p>
-                  <p className="text-2xl font-bold text-blue-900">
-                    {formatNumber(totalTransactions)}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Status Information */}
-          <div className="flex items-center justify-center gap-2 p-3 bg-green-100/50 rounded-lg border border-green-200">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <span className="text-sm font-medium text-green-800">
-              Showing only <strong>{status.toLowerCase()}</strong> transactions for this account
-            </span>
+      {/* Account Number */}
+      <div className="bg-white/70 rounded-md p-2.5 mb-3 border border-white/50">
+        <div className="flex items-center gap-2">
+          <CreditCard className="h-3.5 w-3.5 text-indigo-600" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-slate-600 font-medium">Account</p>
+            <p className="font-mono text-sm font-semibold text-slate-800 truncate">{accountNumber}</p>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Statistics Grid */}
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        {/* Total Amount */}
+        <div className="bg-gradient-to-br from-emerald-100 to-green-100 rounded-md p-2.5 border border-emerald-200/50">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1.5">
+              <div className="h-5 w-5 rounded bg-emerald-200 flex items-center justify-center">
+                <DollarSign className="h-3 w-3 text-emerald-700" />
+              </div>
+              <p className="text-xs text-emerald-700 font-medium">Amount</p>
+            </div>
+            <p className="text-sm font-bold text-emerald-900 leading-tight">
+              {formatCurrency(totalAmount)}
+            </p>
+          </div>
+        </div>
+
+        {/* Transaction Count */}
+        <div className="bg-gradient-to-br from-blue-100 to-cyan-100 rounded-md p-2.5 border border-blue-200/50">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1.5">
+              <div className="h-5 w-5 rounded bg-blue-200 flex items-center justify-center">
+                <Hash className="h-3 w-3 text-blue-700" />
+              </div>
+              <p className="text-xs text-blue-700 font-medium">Count</p>
+            </div>
+            <p className="text-sm font-bold text-blue-900 leading-tight">
+              {formatNumber(totalTransactions)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Info */}
+      <div className="bg-indigo-100/50 rounded-md p-2 border border-indigo-200/50">
+        <div className="flex items-center gap-1.5">
+          <CheckCircle className="h-3 w-3 text-indigo-600 flex-shrink-0" />
+          <span className="text-xs text-indigo-800">
+            Filtered by <span className="font-semibold">{status.toLowerCase()}</span> status
+          </span>
+        </div>
+      </div>
+    </div>
   );
 };
 

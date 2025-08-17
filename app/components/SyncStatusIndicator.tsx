@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { RefreshCw, Zap, Clock, Database } from 'lucide-react';
+import { Zap, Clock } from 'lucide-react';
 
 interface SyncStatus {
   success: boolean;
@@ -17,11 +16,9 @@ interface SyncStatus {
 
 const SyncStatusIndicator: React.FC = () => {
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
-  const [loading, setLoading] = useState(false);
   const [manualSyncing, setManualSyncing] = useState(false);
 
   const checkSyncStatus = async () => {
-    setLoading(true);
     try {
       const response = await fetch('/api/sync');
       const data = await response.json();
@@ -40,8 +37,6 @@ const SyncStatusIndicator: React.FC = () => {
       setSyncStatus(data);
     } catch (error) {
       console.error('Failed to check sync status:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -79,39 +74,29 @@ const SyncStatusIndicator: React.FC = () => {
   }
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex items-center gap-2">
-        <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
-        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-          <Database className="h-3 w-3 mr-1" />
-          Auto-Sync Active
-        </Badge>
+    <div className="space-y-2">
+      {/* Status Row */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+          <span className="text-xs font-medium text-white/90">Auto-Sync Active</span>
+        </div>
+        <div className="flex items-center gap-1 text-xs text-white/70">
+          <Clock className="h-3 w-3" />
+          <span>{syncStatus.schedule}</span>
+        </div>
       </div>
       
-      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-        <Clock className="h-3 w-3 mr-1" />
-        {syncStatus.schedule}
-      </Badge>
-
+      {/* Action Button */}
       <Button
         onClick={triggerManualSync}
         disabled={manualSyncing}
         size="sm"
-        variant="outline"
-        className="h-7 px-2 text-xs bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700"
-      >
-        <Zap className={`h-3 w-3 mr-1 ${manualSyncing ? 'animate-spin' : ''}`} />
-        {manualSyncing ? 'Syncing...' : 'Manual Sync'}
-      </Button>
-
-      <Button
-        onClick={checkSyncStatus}
-        disabled={loading}
-        size="sm"
         variant="ghost"
-        className="h-7 px-2 text-xs"
+        className="w-full h-7 text-xs text-white/90 hover:bg-white/10 border border-white/20 transition-all duration-200"
       >
-        <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+        <Zap className={`h-3 w-3 mr-1.5 ${manualSyncing ? 'animate-spin' : ''}`} />
+        {manualSyncing ? 'Syncing...' : 'Manual Sync'}
       </Button>
     </div>
   );
