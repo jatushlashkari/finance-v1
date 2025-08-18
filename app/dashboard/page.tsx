@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import {
@@ -24,14 +24,15 @@ import {
   RefreshCw, 
   AlertCircle, 
   CheckCircle, 
-  Filter, 
   FileSpreadsheet,
   Calendar,
   Hash,
   User,
   CreditCard,
   Building,
-  LogOut
+  LogOut,
+  ChevronDown,
+  Download
 } from 'lucide-react';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -74,7 +75,7 @@ const TransactionDashboard: React.FC = () => {
   // Page size options
   const pageSizeOptions = [15, 50, 100, 200, 500, 1000, 5000];
 
-  // Summary state
+  // Summary state (for account number filter)
   const [summaryData, setSummaryData] = useState<{
     accountNumber: string;
     totalAmount: number;
@@ -84,9 +85,20 @@ const TransactionDashboard: React.FC = () => {
   } | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
 
+  // Account summary state (for selected account totals)
+  const [accountSummary, setAccountSummary] = useState<{
+    totalAmount: number;
+    totalTransactions: number;
+    succeededTransactions: number;
+    failedTransactions: number;
+    account: string;
+  } | null>(null);
+  const [accountSummaryLoading, setAccountSummaryLoading] = useState(false);
+
   // Load transactions for current page
   const loadTransactions = async (page: number = 1, applyFilters: boolean = false) => {
     if (loading) return; // Prevent multiple simultaneous requests
+    
     setLoading(true);
     setError(null);
     
@@ -122,6 +134,37 @@ const TransactionDashboard: React.FC = () => {
     }
   };
 
+  // Load account summary data (total amount for selected account)
+  const loadAccountSummary = useCallback(async () => {
+    if (selectedAccount === 'all') {
+      setAccountSummary(null);
+      return;
+    }
+
+    setAccountSummaryLoading(true);
+    try {
+      // Get actual account totals from the new API endpoint
+      const totalResponse = await fetch(`/api/account-total/${selectedAccount}`);
+      if (!totalResponse.ok) {
+        throw new Error('Failed to fetch account totals');
+      }
+      const totals = await totalResponse.json();
+
+      setAccountSummary({
+        totalAmount: totals.totalAmount,
+        totalTransactions: totals.totalTransactions,
+        succeededTransactions: totals.succeededTransactions,
+        failedTransactions: totals.failedTransactions,
+        account: selectedAccount
+      });
+    } catch (error) {
+      console.error('Error loading account summary:', error);
+      setAccountSummary(null);
+    } finally {
+      setAccountSummaryLoading(false);
+    }
+  }, [selectedAccount]);
+
   // Load initial data
   useEffect(() => {
     let mounted = true;
@@ -151,6 +194,13 @@ const TransactionDashboard: React.FC = () => {
           setTotalPages(result.totalPages);
           setTotal(result.total);
           setCurrentPage(1);
+          
+          // Load account summary after transactions are loaded
+          if (selectedAccount !== 'all') {
+            setTimeout(() => loadAccountSummary(), 100);
+          } else {
+            setAccountSummary(null);
+          }
         }
       } catch (err) {
         // Only show error if component is still mounted and request wasn't aborted
@@ -174,7 +224,7 @@ const TransactionDashboard: React.FC = () => {
       abortController.abort();
       clearTimeout(timeoutId);
     };
-  }, [selectedAccount, pageSize]);
+  }, [selectedAccount, pageSize, loadAccountSummary]);
 
   // Handle page navigation
   const handlePageChange = (page: number) => {
@@ -306,7 +356,6 @@ const TransactionDashboard: React.FC = () => {
   const copyToClipboard = async (text: string, fieldName: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      // You could add a toast notification here if needed
       console.log(`Copied ${fieldName}: ${text}`);
     } catch (err) {
       console.error('Failed to copy text: ', err);
@@ -439,10 +488,10 @@ const TransactionDashboard: React.FC = () => {
   // Authentication loading state
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-slate-600">Loading...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-gray-600 text-sm">Loading...</p>
         </div>
       </div>
     );
@@ -454,71 +503,105 @@ const TransactionDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex">
-      {/* Redesigned Sidebar - Fixed Position */}
-      <div className="w-72 fixed left-0 top-0 h-screen bg-gradient-to-b from-white via-slate-50/80 to-white shadow-2xl border-r border-slate-200/50 z-10">
-        <div className="h-full flex flex-col">
-          {/* Compact Header */}
-          <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-blue-600 to-purple-700 text-white">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-white/10"></div>
-            <div className="relative p-4">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="h-8 w-8 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg">
-                  <FileSpreadsheet className="h-4 w-4 text-white" />
+    <div className="min-h-screen bg-gray-50">
+      {/* Modern Header */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            {/* Logo & Title */}
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-gray-900 rounded-xl flex items-center justify-center">
+                  <FileSpreadsheet className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold text-white">
-                    Finance Dashboard
-                  </h1>
-                  <p className="text-xs text-white/70">
-                    Transaction Management
-                  </p>
+                  <h1 className="text-xl font-semibold text-gray-900">Finance Dashboard</h1>
+                  <p className="text-xs text-gray-500">Transaction Management System</p>
                 </div>
               </div>
-              
-              {/* Compact Stats */}
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 border border-white/20">
-                  <div className="text-xs text-white/80">Records</div>
-                  <div className="text-sm font-semibold text-white">{total.toLocaleString()}</div>
-                </div>
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 border border-white/20">
-                  <div className="text-xs text-white/80">Page</div>
-                  <div className="text-sm font-semibold text-white">{currentPage}/{totalPages}</div>
-                </div>
+            </div>
+
+            {/* Header Stats */}
+            <div className="hidden md:flex items-center space-x-8">
+              <div className="text-center">
+                <div className="text-lg font-semibold text-gray-900">{total.toLocaleString()}</div>
+                <div className="text-xs text-gray-500">Total Records</div>
               </div>
-              
-              {/* Sync Status - Compact */}
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-2 border border-white/20">
-                <SyncStatusIndicator />
+              <div className="text-center">
+                <div className="text-lg font-semibold text-gray-900">{currentPage} / {totalPages}</div>
+                <div className="text-xs text-gray-500">Current Page</div>
               </div>
+              <div className="h-8 w-px bg-gray-200"></div>
+              <SyncStatusIndicator />
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center space-x-3">
+              <Button
+                onClick={exportToExcel}
+                disabled={loading || transactions.length === 0}
+                size="sm"
+                variant="outline"
+                className="hidden sm:flex items-center space-x-2"
+              >
+                <Download className="w-4 h-4" />
+                <span>Export</span>
+              </Button>
+              <Button
+                onClick={() => loadTransactions(currentPage)}
+                disabled={loading}
+                size="sm"
+                variant="outline"
+                className="flex items-center space-x-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Refresh</span>
+              </Button>
+              <Button
+                onClick={logout}
+                size="sm"
+                variant="ghost"
+                className="flex items-center space-x-2"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Logout</span>
+              </Button>
             </div>
           </div>
+        </div>
+      </header>
 
-          {/* Sidebar Content - More Compact */}
-          <div className="flex-1 min-h-0 p-4 space-y-4 overflow-y-auto">
-            {/* Account Selector - Redesigned */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide flex items-center gap-1.5">
-                <Building className="h-3 w-3" />
-                Account
-              </label>
-              <div className="relative">
-                <select
-                  value={selectedAccount}
-                  onChange={(e) => setSelectedAccount(e.target.value as keyof typeof ACCOUNTS)}
-                  className="w-full appearance-none bg-white border border-slate-200 rounded-lg px-3 py-2.5 pr-8 text-sm font-medium shadow-sm transition-all duration-200 hover:shadow-md hover:border-slate-300 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  disabled={loading}
-                >
-                  <option value="all">{ACCOUNTS.all.icon} {ACCOUNTS.all.name}</option>
-                  <option value="doa6ps">{ACCOUNTS.doa6ps.icon} Account {ACCOUNTS.doa6ps.name}</option>
-                  <option value="fwxeqk">{ACCOUNTS.fwxeqk.icon} Account {ACCOUNTS.fwxeqk.name}</option>
-                </select>
-                <Filter className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Controls Section */}
+        <div className="mb-8">
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Transactions</h2>
+                <p className="text-sm text-gray-500 mt-1">View and manage all financial transactions</p>
+              </div>
+              
+              {/* Account Selector */}
+              <div className="flex items-center space-x-4">
+                <label className="text-sm font-medium text-gray-700">Account:</label>
+                <div className="relative">
+                  <select
+                    value={selectedAccount}
+                    onChange={(e) => setSelectedAccount(e.target.value as keyof typeof ACCOUNTS)}
+                    className="bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent appearance-none"
+                    disabled={loading}
+                  >
+                    <option value="all">All Accounts</option>
+                    <option value="doa6ps">DOA6PS</option>
+                    <option value="fwxeqk">FWXEQK</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-2.5 h-4 w-4 text-gray-400 pointer-events-none" />
+                </div>
               </div>
             </div>
 
-            {/* Transaction Filters - Compact */}
+            {/* Transaction Filters */}
             <TransactionFilters
               filters={filters}
               onFiltersChange={handleFiltersChange}
@@ -527,276 +610,252 @@ const TransactionDashboard: React.FC = () => {
               isLoading={loading}
             />
 
-            {/* Account Summary Card - Show when account number filter is applied */}
+            {/* Account Summary Card (for account number filter) */}
             {(summaryData || summaryLoading) && filters.accountNumber && (
-              <AccountSummaryCard
-                accountNumber={filters.accountNumber}
-                totalAmount={summaryData?.totalAmount || 0}
-                totalTransactions={summaryData?.totalTransactions || 0}
-                status={summaryData?.status || 'Succeeded'}
-                _account={selectedAccount}
-                isLoading={summaryLoading}
-              />
+              <div className="mt-6">
+                <AccountSummaryCard
+                  accountNumber={filters.accountNumber}
+                  totalAmount={summaryData?.totalAmount || 0}
+                  totalTransactions={summaryData?.totalTransactions || 0}
+                  status={summaryData?.status || 'Succeeded'}
+                  _account={selectedAccount}
+                  isLoading={summaryLoading}
+                />
+              </div>
+            )}
+
+            {/* Account Total Summary Card (for selected account) */}
+            {(accountSummary || accountSummaryLoading) && selectedAccount !== 'all' && !filters.accountNumber && (
+              <div className="mt-6">
+                <AccountSummaryCard
+                  accountNumber={`All ${ACCOUNTS[selectedAccount].name} Transactions`}
+                  totalAmount={accountSummary?.totalAmount || 0}
+                  totalTransactions={accountSummary?.totalTransactions || 0}
+                  succeededTransactions={accountSummary?.succeededTransactions || 0}
+                  failedTransactions={accountSummary?.failedTransactions || 0}
+                  status="Total Summary"
+                  _account={selectedAccount}
+                  isLoading={accountSummaryLoading}
+                />
+              </div>
             )}
           </div>
-          
-          {/* Action Buttons - Fixed at Bottom */}
-          <div className="flex-shrink-0 p-4 bg-slate-50/50 border-t border-slate-200">
-            <div className="space-y-2">
-              <Button 
-                onClick={exportToExcel} 
-                disabled={loading || transactions.length === 0}
-                size="sm"
-                variant="outline"
-                className="w-full bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700 font-medium transition-all duration-200"
-              >
-                <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
-                Export Excel
-              </Button>
-              
-              <Button 
-                onClick={() => loadTransactions(currentPage)} 
-                disabled={loading}
-                size="sm"
-                className="w-full bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white font-medium transition-all duration-200"
-              >
-                <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-              
-              <Button 
-                onClick={logout}
-                size="sm"
-                variant="outline"
-                className="w-full bg-rose-50 hover:bg-rose-100 border-rose-200 text-rose-700 font-medium transition-all duration-200"
-              >
-                <LogOut className="h-3.5 w-3.5 mr-1.5" />
-                Logout
-              </Button>
-            </div>
-          </div>
         </div>
-      </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 ml-72 p-6 space-y-6 overflow-y-auto">
         {/* Error Display */}
         {error && (
-          <div className="rounded-2xl bg-red-50 border border-red-200 p-6 shadow-lg">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
-                <AlertCircle className="h-5 w-5 text-red-600" />
-              </div>
+          <div className="mb-8 bg-red-50 border border-red-200 rounded-xl p-6">
+            <div className="flex items-start space-x-3">
+              <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
               <div>
-                <h3 className="font-semibold text-red-900">Error Loading Transactions</h3>
-                <p className="text-red-700 mt-1">{error}</p>
+                <h3 className="text-sm font-medium text-red-900">Error Loading Transactions</h3>
+                <p className="text-sm text-red-700 mt-1">{error}</p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Modern Transactions Table */}
-        <div className="rounded-2xl bg-white/80 backdrop-blur-sm border border-white/20 shadow-xl overflow-hidden">
+        {/* Transactions Table */}
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <Table className="relative">
-              <TableHeader>
-                <TableRow className="hover:bg-transparent border-b border-slate-200">
-                  <TableHead className="h-14 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider bg-slate-50/50">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      Date
+            <div className="min-w-[600px]">
+              <Table>
+            <TableHeader>
+              <TableRow className="bg-gray-50">
+                <TableHead className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[140px]">
+                  <div className="flex items-center space-x-2">
+                    <Calendar className="w-4 h-4" />
+                    <span>Date & Time</span>
+                  </div>
+                </TableHead>
+                {selectedAccount === 'all' && (
+                  <TableHead className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[100px]">
+                    <div className="flex items-center space-x-2">
+                      <Building className="w-4 h-4" />
+                      <span>Account</span>
                     </div>
                   </TableHead>
-                  {selectedAccount === 'all' && (
-                    <TableHead className="h-14 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider bg-slate-50/50">
-                      <div className="flex items-center gap-2">
-                        <Building className="h-4 w-4" />
-                        Account
-                      </div>
-                    </TableHead>
-                  )}
-                  <TableHead className="h-14 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider bg-slate-50/50">
-                    <div className="flex items-center gap-2">
-                      <Hash className="h-4 w-4" />
-                      Withdraw ID
-                    </div>
-                  </TableHead>
-                  <TableHead className="h-14 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider bg-slate-50/50">
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4" />
-                      Account Holder
-                    </div>
-                  </TableHead>
-                  <TableHead className="h-14 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider bg-slate-50/50">
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="h-4 w-4" />
-                      Account Number
-                    </div>
-                  </TableHead>
-                  <TableHead className="h-14 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider bg-slate-50/50">
-                    <div className="flex items-center gap-2">
-                      <Building className="h-4 w-4" />
-                      IFSC Code
-                    </div>
-                  </TableHead>
-                  <TableHead className="h-14 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider bg-slate-50/50">
-                    <div className="flex items-center gap-2">
-                      <Hash className="h-4 w-4" />
-                      UTR
-                    </div>
-                  </TableHead>
-                  <TableHead className="h-14 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider bg-slate-50/50">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4" />
-                      Status
-                    </div>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={selectedAccount === 'all' ? 8 : 7} className="text-center py-16">
-                      <div className="flex flex-col items-center gap-4">
-                        <div className="h-12 w-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
-                          <RefreshCw className="h-6 w-6 text-white animate-spin" />
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-slate-900">Loading transactions...</h3>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Please wait while we fetch the latest data
-                          </p>
-                        </div>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : transactions.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={selectedAccount === 'all' ? 8 : 7} className="text-center py-16">
-                      <div className="flex flex-col items-center gap-4">
-                        <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center">
-                          <FileSpreadsheet className="h-8 w-8 text-slate-400" />
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-slate-900">No transactions found</h3>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Try selecting a different account or refreshing the data
-                          </p>
-                        </div>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  transactions.map((transaction) => (
-                    <TableRow 
-                      key={transaction.id} 
-                      className="border-b border-slate-100 hover:bg-slate-50/50 transition-all duration-200 group"
-                    >
-                      <TableCell 
-                        className="px-6 py-4 cursor-copy" 
-                        onDoubleClick={() => copyToClipboard(formatDate(transaction.date), 'Date')}
-                        title="Double-click to copy"
-                      >
-                        <span className="font-mono text-sm font-medium text-slate-900">
-                          {formatDate(transaction.date)}
-                        </span>
-                      </TableCell>
-                      {selectedAccount === 'all' && (
-                        <TableCell 
-                          className="px-6 py-4 cursor-copy" 
-                          onDoubleClick={() => copyToClipboard(ACCOUNTS[transaction.source as keyof typeof ACCOUNTS]?.name || transaction.source?.toUpperCase() || 'Unknown', 'Account')}
-                          title="Double-click to copy"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">{ACCOUNTS[transaction.source as keyof typeof ACCOUNTS]?.icon || '📄'}</span>
-                            <span className="font-medium text-slate-900">
-                              {ACCOUNTS[transaction.source as keyof typeof ACCOUNTS]?.name || transaction.source?.toUpperCase() || 'Unknown'}
-                            </span>
-                          </div>
-                        </TableCell>
-                      )}
-                      <TableCell 
-                        className="px-6 py-4 cursor-copy" 
-                        onDoubleClick={() => copyToClipboard(transaction.withdrawId, 'Withdraw ID')}
-                        title="Double-click to copy"
-                      >
-                        <div className="font-mono text-sm bg-slate-100 px-3 py-1.5 rounded-lg inline-block">
-                          {transaction.withdrawId}
-                        </div>
-                      </TableCell>
-                      <TableCell 
-                        className="px-6 py-4 cursor-copy" 
-                        onDoubleClick={() => copyToClipboard(transaction.accountHolderName || '-', 'Account Holder')}
-                        title="Double-click to copy"
-                      >
-                        <span className="font-medium text-slate-900">
-                          {transaction.accountHolderName || '-'}
-                        </span>
-                      </TableCell>
-                      <TableCell 
-                        className="px-6 py-4 cursor-copy" 
-                        onDoubleClick={() => copyToClipboard(transaction.accountNumber || '-', 'Account Number')}
-                        title="Double-click to copy"
-                      >
-                        <span className="font-mono text-sm bg-slate-100 px-3 py-1.5 rounded-lg">
-                          {transaction.accountNumber || '-'}
-                        </span>
-                      </TableCell>
-                      <TableCell 
-                        className="px-6 py-4 cursor-copy" 
-                        onDoubleClick={() => copyToClipboard(transaction.ifscCode || '-', 'IFSC Code')}
-                        title="Double-click to copy"
-                      >
-                        <span className="font-mono text-sm font-medium text-slate-600">
-                          {transaction.ifscCode || '-'}
-                        </span>
-                      </TableCell>
-                      <TableCell 
-                        className="px-6 py-4 cursor-copy" 
-                        onDoubleClick={() => copyToClipboard(transaction.utr || '-', 'UTR')}
-                        title="Double-click to copy"
-                      >
-                        <span className="font-mono text-sm text-slate-500">
-                          {transaction.utr || '-'}
-                        </span>
-                      </TableCell>
-                      <TableCell 
-                        className="px-6 py-4 cursor-copy" 
-                        onDoubleClick={() => copyToClipboard(transaction.status, 'Status')}
-                        title="Double-click to copy"
-                      >
-                        <Badge 
-                          variant="outline"
-                          className={`font-medium flex items-center gap-2 ${getStatusVariant(transaction.status) === 'secondary' 
-                            ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
-                            : getStatusVariant(transaction.status) === 'default'
-                            ? 'bg-green-50 text-green-700 border-green-200'
-                            : 'bg-red-50 text-red-700 border-red-200'
-                          }`}
-                        >
-                          {getStatusIcon(transaction.status)}
-                          {transaction.status}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))
                 )}
-              </TableBody>
-            </Table>
+                <TableHead className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[110px]">
+                  <div className="flex items-center space-x-2">
+                    <Hash className="w-4 h-4" />
+                    <span>Withdraw ID</span>
+                  </div>
+                </TableHead>
+                <TableHead className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[140px]">
+                  <div className="flex items-center space-x-2">
+                    <User className="w-4 h-4" />
+                    <span className="hidden md:inline">Account Holder</span>
+                    <span className="md:hidden">Holder</span>
+                  </div>
+                </TableHead>
+                <TableHead className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[130px]">
+                  <div className="flex items-center space-x-2">
+                    <CreditCard className="w-4 h-4" />
+                    <span className="hidden md:inline">Account Number</span>
+                    <span className="md:hidden">Account</span>
+                  </div>
+                </TableHead>
+                <TableHead className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[90px] hidden lg:table-cell">
+                  <div className="flex items-center space-x-2">
+                    <Building className="w-4 h-4" />
+                    <span>IFSC Code</span>
+                  </div>
+                </TableHead>
+                <TableHead className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[120px] hidden xl:table-cell">
+                  <div className="flex items-center space-x-2">
+                    <Hash className="w-4 h-4" />
+                    <span>UTR</span>
+                  </div>
+                </TableHead>
+                <TableHead className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[90px]">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle className="w-4 h-4" />
+                    <span>Status</span>
+                  </div>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={selectedAccount === 'all' ? 8 : 6} className="text-center py-12">
+                    <div className="flex flex-col items-center space-y-4">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                      <div>
+                        <h3 className="text-base font-medium text-gray-900">Loading transactions...</h3>
+                        <p className="text-sm text-gray-500 mt-1">Please wait while we fetch the latest data</p>
+                      </div>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : transactions.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={selectedAccount === 'all' ? 8 : 6} className="text-center py-12">
+                    <div className="flex flex-col items-center space-y-4">
+                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                        <FileSpreadsheet className="w-6 h-6 text-gray-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-medium text-gray-900">No transactions found</h3>
+                        <p className="text-sm text-gray-500 mt-1">Try selecting a different account or refreshing the data</p>
+                      </div>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                transactions.map((transaction) => (
+                  <TableRow 
+                    key={transaction.id} 
+                    className="hover:bg-gray-50 transition-colors duration-150"
+                  >
+                    <TableCell 
+                      className="px-4 py-3 cursor-copy" 
+                      onDoubleClick={() => copyToClipboard(formatDate(transaction.date), 'Date')}
+                      title="Double-click to copy"
+                    >
+                      <div className="text-sm text-gray-900">
+                        <div className="font-medium">{new Date(transaction.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                        <div className="text-xs text-gray-500">{new Date(transaction.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</div>
+                      </div>
+                    </TableCell>
+                    {selectedAccount === 'all' && (
+                      <TableCell 
+                        className="px-4 py-3 cursor-copy" 
+                        onDoubleClick={() => copyToClipboard(ACCOUNTS[transaction.source as keyof typeof ACCOUNTS]?.name || transaction.source?.toUpperCase() || 'Unknown', 'Account')}
+                        title="Double-click to copy"
+                      >
+                        <div className="flex items-center justify-center">
+                          <span className="text-lg">{ACCOUNTS[transaction.source as keyof typeof ACCOUNTS]?.icon || '📄'}</span>
+                          <span className="text-sm font-medium text-gray-900 ml-2 hidden sm:inline">
+                            {ACCOUNTS[transaction.source as keyof typeof ACCOUNTS]?.name || transaction.source?.toUpperCase() || 'Unknown'}
+                          </span>
+                        </div>
+                      </TableCell>
+                    )}
+                    <TableCell 
+                      className="px-4 py-3 cursor-copy" 
+                      onDoubleClick={() => copyToClipboard(transaction.withdrawId, 'Withdraw ID')}
+                      title="Double-click to copy"
+                    >
+                      <span className="inline-flex items-center px-2.5 py-1 rounded text-sm font-mono bg-gray-100 text-gray-800">
+                        {transaction.withdrawId}
+                      </span>
+                    </TableCell>
+                    <TableCell 
+                      className="px-4 py-3 cursor-copy max-w-[140px]" 
+                      onDoubleClick={() => copyToClipboard(transaction.accountHolderName || '-', 'Account Holder')}
+                      title="Double-click to copy"
+                    >
+                      <div className="text-sm text-gray-900 truncate">
+                        {transaction.accountHolderName || '-'}
+                      </div>
+                    </TableCell>
+                    <TableCell 
+                      className="px-4 py-3 cursor-copy" 
+                      onDoubleClick={() => copyToClipboard(transaction.accountNumber || '-', 'Account Number')}
+                      title="Double-click to copy"
+                    >
+                      <span className="text-sm font-mono text-gray-900">
+                        {transaction.accountNumber || '-'}
+                      </span>
+                    </TableCell>
+                    <TableCell 
+                      className="px-4 py-3 cursor-copy hidden lg:table-cell" 
+                      onDoubleClick={() => copyToClipboard(transaction.ifscCode || '-', 'IFSC Code')}
+                      title="Double-click to copy"
+                    >
+                      <span className="text-sm font-mono text-gray-600">
+                        {transaction.ifscCode || '-'}
+                      </span>
+                    </TableCell>
+                    <TableCell 
+                      className="px-4 py-3 cursor-copy hidden xl:table-cell" 
+                      onDoubleClick={() => copyToClipboard(transaction.utr || '-', 'UTR')}
+                      title="Double-click to copy"
+                    >
+                      <span className="text-sm font-mono text-gray-500 truncate">
+                        {transaction.utr || '-'}
+                      </span>
+                    </TableCell>
+                    <TableCell 
+                      className="px-4 py-3 cursor-copy" 
+                      onDoubleClick={() => copyToClipboard(transaction.status, 'Status')}
+                      title="Double-click to copy"
+                    >
+                      <Badge 
+                        variant={getStatusVariant(transaction.status)}
+                        className="text-sm px-3 py-1"
+                      >
+                        <span className="hidden sm:flex items-center space-x-1">
+                          {getStatusIcon(transaction.status)}
+                          <span>{transaction.status}</span>
+                        </span>
+                        <span className="sm:hidden">
+                          {getStatusIcon(transaction.status)}
+                        </span>
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+            </div>
           </div>
         </div>
 
-        {/* Table Controls & Pagination */}
+        {/* Pagination & Controls */}
         {!loading && transactions.length > 0 && (
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
+          <div className="mt-8 flex flex-col lg:flex-row items-center justify-between gap-4">
             {/* Page Size Selector */}
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-slate-600">Rows per page:</span>
+            <div className="flex items-center space-x-3">
+              <span className="text-sm font-medium text-gray-700">Rows per page:</span>
               <div className="relative">
                 <select
                   value={pageSize}
                   onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                  className="appearance-none bg-white/90 backdrop-blur-sm border border-slate-200 rounded-lg px-3 py-2 pr-8 text-sm font-medium shadow-sm transition-all duration-200 hover:shadow-md focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  className="bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent appearance-none"
                   disabled={loading}
                 >
                   {pageSizeOptions.map((size) => (
@@ -805,18 +864,14 @@ const TransactionDashboard: React.FC = () => {
                     </option>
                   ))}
                 </select>
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
+                <ChevronDown className="absolute right-2 top-2.5 h-4 w-4 text-gray-400 pointer-events-none" />
               </div>
             </div>
 
             {/* Pagination */}
-            <div className="rounded-2xl bg-white/80 backdrop-blur-sm border border-white/20 shadow-lg p-4">
+            <div className="bg-white border border-gray-200 rounded-lg px-4 py-2">
               <Pagination>
-                <PaginationContent className="gap-2">
+                <PaginationContent className="gap-1">
                   <PaginationItem>
                     <PaginationPrevious 
                       href="#" 
@@ -824,10 +879,10 @@ const TransactionDashboard: React.FC = () => {
                         e.preventDefault();
                         handlePageChange(currentPage - 1);
                       }}
-                      className={`rounded-xl transition-all duration-200 ${
+                      className={`transition-colors ${
                         currentPage <= 1 
                           ? 'pointer-events-none opacity-50' 
-                          : 'hover:bg-blue-50 hover:text-blue-600'
+                          : 'hover:bg-gray-100'
                       }`}
                     />
                   </PaginationItem>
@@ -835,7 +890,7 @@ const TransactionDashboard: React.FC = () => {
                   {generatePageNumbers().map((page, index) => (
                     <PaginationItem key={index}>
                       {page === '...' ? (
-                        <PaginationEllipsis className="text-slate-500" />
+                        <PaginationEllipsis className="text-gray-500" />
                       ) : (
                         <PaginationLink
                           href="#"
@@ -844,10 +899,10 @@ const TransactionDashboard: React.FC = () => {
                             handlePageChange(page as number);
                           }}
                           isActive={page === currentPage}
-                          className={`rounded-xl transition-all duration-200 ${
+                          className={`transition-colors ${
                             page === currentPage
-                              ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg hover:from-blue-600 hover:to-purple-700'
-                              : 'hover:bg-slate-100'
+                              ? 'bg-gray-900 text-white hover:bg-gray-800'
+                              : 'hover:bg-gray-100'
                           }`}
                         >
                           {page}
@@ -863,47 +918,43 @@ const TransactionDashboard: React.FC = () => {
                         e.preventDefault();
                         handlePageChange(currentPage + 1);
                       }}
-                      className={`rounded-xl transition-all duration-200 ${
+                      className={`transition-colors ${
                         currentPage >= totalPages 
                           ? 'pointer-events-none opacity-50' 
-                          : 'hover:bg-blue-50 hover:text-blue-600'
+                          : 'hover:bg-gray-100'
                       }`}
                     />
                   </PaginationItem>
                 </PaginationContent>
               </Pagination>
             </div>
+
+            {/* Summary Info */}
+            <div className="text-sm text-gray-500">
+              Showing {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, total)} of {total} transactions
+            </div>
           </div>
         )}
 
-        {/* Enhanced Footer */}
-        <div className="rounded-2xl bg-white/60 backdrop-blur-sm border border-white/20 shadow-lg p-6">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-4 text-sm">
-            <div className="flex flex-col lg:flex-row items-center gap-4 text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                <span>
-                  Showing {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, total)} of {total} transactions
-                </span>
+        {/* Footer */}
+        <div className="mt-12 pt-8 border-t border-gray-200">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-500">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                <span>Connected to {ACCOUNTS[selectedAccount].name}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-blue-500"></div>
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
                 <span>Page {currentPage} of {totalPages}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-purple-500"></div>
-                <span>{pageSize} per page</span>
-              </div>
             </div>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <span>Connected to:</span>
-              <Badge variant="outline" className="font-mono bg-white/50">
-                {ACCOUNTS[selectedAccount].name} via Next.js API
-              </Badge>
+            <div className="text-center">
+              <p>&copy; 2025 Finance Dashboard - Modern Transaction Management</p>
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 };

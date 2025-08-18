@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from './ui/select';
 
-import { Search, Calendar, Filter as FilterIcon, X } from 'lucide-react';
+import { Search, Filter as FilterIcon, X } from 'lucide-react';
 
 interface FilterProps {
   filters: {
@@ -52,134 +52,86 @@ const TransactionFilters: React.FC<FilterProps> = ({
     filters.endDate;
 
   return (
-    <div className="space-y-3">
-      <div>
-        <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide flex items-center gap-1.5 mb-1">
-          <FilterIcon className="h-3 w-3" />
-          Filters
-        </label>
-        <p className="text-xs text-slate-500 mb-3">Search & filter transactions</p>
-      </div>
-      
-      <div className="space-y-3">
-        {/* Account Number Search */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-slate-600 flex items-center gap-1.5">
-            <Search className="h-3 w-3 text-indigo-500" />
-            Account Number
-          </label>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      {/* Account Number Search */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-gray-700">Account Number</label>
+        <div className="relative">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
           <Input
             placeholder="Search account..."
             value={filters.accountNumber}
             onChange={(e) => handleFilterChange('accountNumber', e.target.value)}
-            className="h-8 text-xs bg-white border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all duration-200"
+            className="pl-10 h-10 border-gray-300 focus:border-gray-900 focus:ring-gray-900"
           />
-        </div>
-
-        {/* Status Filter */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-slate-600 flex items-center gap-1.5">
-            <FilterIcon className="h-3 w-3 text-emerald-500" />
-            Status
-          </label>
-          <Select 
-            value={filters.status} 
-            onValueChange={(value: string) => handleFilterChange('status', value)}
-          >
-            <SelectTrigger className="h-8 text-xs bg-white border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all duration-200">
-              <SelectValue placeholder="Select status" />
-            </SelectTrigger>
-            <SelectContent className="bg-white border-slate-200 shadow-lg">
-              <SelectItem value="all" className="text-xs hover:bg-slate-50">All Statuses</SelectItem>
-              <SelectItem value="Succeeded" className="text-xs hover:bg-green-50">
-                <div className="flex items-center gap-1.5">
-                  <div className="h-1.5 w-1.5 bg-green-500 rounded-full"></div>
-                  Succeeded
-                </div>
-              </SelectItem>
-              <SelectItem value="Processing" className="text-xs hover:bg-yellow-50">
-                <div className="flex items-center gap-1.5">
-                  <div className="h-1.5 w-1.5 bg-yellow-500 rounded-full"></div>
-                  Processing
-                </div>
-              </SelectItem>
-              <SelectItem value="Failed" className="text-xs hover:bg-red-50">
-                <div className="flex items-center gap-1.5">
-                  <div className="h-1.5 w-1.5 bg-red-500 rounded-full"></div>
-                  Failed
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Date Range - Compact */}
-        <div className="grid grid-cols-2 gap-2">
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-600 flex items-center gap-1">
-              <Calendar className="h-3 w-3 text-purple-500" />
-              Start
-            </label>
-            <Input
-              type="date"
-              value={filters.startDate}
-              onChange={(e) => handleFilterChange('startDate', e.target.value)}
-              className="h-8 text-xs bg-white border-slate-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all duration-200"
-            />
-          </div>
-          
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-600 flex items-center gap-1">
-              <Calendar className="h-3 w-3 text-rose-500" />
-              End
-            </label>
-            <Input
-              type="date"
-              value={filters.endDate}
-              onChange={(e) => handleFilterChange('endDate', e.target.value)}
-              className="h-8 text-xs bg-white border-slate-200 focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all duration-200"
-            />
-          </div>
         </div>
       </div>
 
-      {/* Filter Actions */}
-      <div className="bg-gradient-to-br from-slate-50 to-white rounded-lg p-3 border border-slate-200 space-y-2">
-        <Button 
-          onClick={onApplyFilters}
-          disabled={isLoading}
-          size="sm"
-          className="w-full bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white font-medium transition-all duration-200"
+      {/* Status Filter */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-gray-700">Status</label>
+        <Select 
+          value={filters.status} 
+          onValueChange={(value: string) => handleFilterChange('status', value)}
         >
-          <FilterIcon className="h-3.5 w-3.5 mr-1.5" />
-          {isLoading ? 'Applying...' : 'Apply'}
-        </Button>
-        
-        {hasActiveFilters && (
-          <Button 
-            onClick={onClearFilters}
-            variant="outline"
-            disabled={isLoading}
-            size="sm"
-            className="w-full border-slate-300 hover:bg-slate-100 text-slate-600 font-medium transition-all duration-200"
-          >
-            <X className="h-3.5 w-3.5 mr-1.5" />
-            Clear
-          </Button>
-        )}
+          <SelectTrigger className="h-10 border-gray-300 focus:border-gray-900 focus:ring-gray-900">
+            <SelectValue placeholder="Select status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="Succeeded">Succeeded</SelectItem>
+            <SelectItem value="Processing">Processing</SelectItem>
+            <SelectItem value="Failed">Failed</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-        {hasActiveFilters && (
-          <div className="text-xs bg-indigo-50 border border-indigo-200 rounded px-2 py-1.5">
-            <div className="text-indigo-700 font-medium">
-              Active: {[
-                filters.accountNumber && 'Account',
-                filters.status && filters.status !== 'all' && 'Status',
-                filters.startDate && 'Start',
-                filters.endDate && 'End'
-              ].filter(Boolean).join(', ')}
-            </div>
-          </div>
-        )}
+      {/* Start Date */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-gray-700">Start Date</label>
+        <Input
+          type="date"
+          value={filters.startDate}
+          onChange={(e) => handleFilterChange('startDate', e.target.value)}
+          className="h-10 border-gray-300 focus:border-gray-900 focus:ring-gray-900"
+        />
+      </div>
+      
+      {/* End Date */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-gray-700">End Date</label>
+        <Input
+          type="date"
+          value={filters.endDate}
+          onChange={(e) => handleFilterChange('endDate', e.target.value)}
+          className="h-10 border-gray-300 focus:border-gray-900 focus:ring-gray-900"
+        />
+      </div>
+
+      {/* Actions */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-gray-700 opacity-0">Actions</label>
+        <div className="flex space-x-2">
+          <Button 
+            onClick={onApplyFilters}
+            disabled={isLoading}
+            className="flex-1 h-10 bg-gray-900 hover:bg-gray-800"
+          >
+            <FilterIcon className="h-4 w-4 mr-2" />
+            {isLoading ? 'Applying...' : 'Apply'}
+          </Button>
+          
+          {hasActiveFilters && (
+            <Button 
+              onClick={onClearFilters}
+              variant="outline"
+              disabled={isLoading}
+              className="h-10 border-gray-300 hover:bg-gray-50"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

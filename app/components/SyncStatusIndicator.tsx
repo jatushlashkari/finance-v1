@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Button } from './ui/button';
-import { Zap, Clock } from 'lucide-react';
+import { Zap } from 'lucide-react';
 
 const SyncStatusIndicator: React.FC = () => {
   const [manualSyncing, setManualSyncing] = useState(false);
@@ -24,29 +24,23 @@ const SyncStatusIndicator: React.FC = () => {
   };
 
   return (
-    <div className="space-y-2">
-      {/* Status Row - Static display */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="h-1.5 w-1.5 rounded-full bg-gray-400"></div>
-          <span className="text-xs font-medium text-white/90">Manual Sync Only</span>
-        </div>
-        <div className="flex items-center gap-1 text-xs text-white/70">
-          <Clock className="h-3 w-3" />
-          <span>On-demand</span>
-        </div>
+    <div className="flex items-center space-x-3">
+      {/* Status Indicator */}
+      <div className="flex items-center space-x-2">
+        <div className="w-2 h-2 rounded-full bg-green-500"></div>
+        <span className="text-sm text-gray-600">Sync Ready</span>
       </div>
       
-      {/* Action Button */}
+      {/* Sync Button */}
       <Button
         onClick={triggerManualSync}
         disabled={manualSyncing}
         size="sm"
-        variant="ghost"
-        className="w-full h-7 text-xs text-white/90 hover:bg-white/10 border border-white/20 transition-all duration-200"
+        variant="outline"
+        className="h-8 px-3"
       >
-        <Zap className={`h-3 w-3 mr-1.5 ${manualSyncing ? 'animate-spin' : ''}`} />
-        {manualSyncing ? 'Syncing...' : 'Manual Sync'}
+        <Zap className={`w-3 h-3 mr-1.5 ${manualSyncing ? 'animate-spin' : ''}`} />
+        {manualSyncing ? 'Syncing...' : 'Sync'}
       </Button>
     </div>
   );
