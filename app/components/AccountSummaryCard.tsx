@@ -69,89 +69,167 @@ const AccountSummaryCard: React.FC<AccountSummaryCardProps> = ({
   }
 
   return (
-    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
-      {/* Account Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 mb-4">
-        {/* Account Number */}
-        <div className="flex items-center space-x-2">
-          <CreditCard className="h-4 w-4 text-blue-600 flex-shrink-0" />
-          <div>
-            <p className="text-xs text-gray-600">
-              {accountNumber.includes('All ') ? 'Summary' : 'Account'}
-            </p>
-            <p className={`text-sm font-semibold text-gray-900 ${
-              accountNumber.includes('All ') ? '' : 'font-mono'
-            }`}>
-              {accountNumber}
-            </p>
+    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 md:p-4">
+      {/* Mobile Layout */}
+      <div className="md:hidden">
+        {/* Account Header - Mobile */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <CreditCard className="h-5 w-5 text-blue-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-gray-600">
+                {accountNumber.includes('All ') ? 'Summary' : 'Account'}
+              </p>
+              <p className={`text-sm font-semibold text-gray-900 truncate ${
+                accountNumber.includes('All ') ? '' : 'font-mono'
+              }`}>
+                {accountNumber}
+              </p>
+            </div>
           </div>
-        </div>
-
-        {/* Status Badge */}
-        <div className="flex justify-start md:justify-end">
           <Badge 
             variant="default" 
-            className={`w-fit ${
+            className={`text-xs ${
               status === 'Total Summary' 
                 ? 'bg-blue-100 text-blue-800 border-blue-200' 
                 : 'bg-green-100 text-green-800 border-green-200'
             }`}
           >
-            <CheckCircle className="h-3 w-3 mr-1" />
-            {status}
+            {status === 'Total Summary' ? 'Summary' : 'Active'}
           </Badge>
         </div>
-      </div>
 
-      {/* Statistics Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Amount */}
-        <div className="flex items-center space-x-2">
-          <DollarSign className="h-4 w-4 text-green-600 flex-shrink-0" />
-          <div>
-            <p className="text-xs text-gray-600">Total Amount</p>
-            <p className="text-sm font-bold text-gray-900">
+        {/* Statistics Grid - Mobile 2x2 */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Total Amount */}
+          <div className="bg-white/50 rounded-lg p-3 text-center">
+            <DollarSign className="h-5 w-5 text-green-600 mx-auto mb-1" />
+            <p className="text-xs text-gray-600 mb-1">Total Amount</p>
+            <p className="text-sm font-bold text-gray-900 leading-tight">
               {formatCurrency(totalAmount)}
             </p>
           </div>
-        </div>
 
-        {/* Total Transactions */}
-        <div className="flex items-center space-x-2">
-          <BarChart3 className="h-4 w-4 text-blue-600 flex-shrink-0" />
-          <div>
-            <p className="text-xs text-gray-600">Total Transactions</p>
+          {/* Total Transactions */}
+          <div className="bg-white/50 rounded-lg p-3 text-center">
+            <BarChart3 className="h-5 w-5 text-blue-600 mx-auto mb-1" />
+            <p className="text-xs text-gray-600 mb-1">Total Transactions</p>
             <p className="text-sm font-bold text-gray-900">
               {formatNumber(totalTransactions)}
             </p>
           </div>
-        </div>
 
-        {/* Succeeded Transactions */}
-        {(succeededTransactions !== undefined) && (
-          <div className="flex items-center space-x-2">
-            <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-            <div>
-              <p className="text-xs text-gray-600">Success</p>
+          {/* Succeeded Transactions */}
+          {(succeededTransactions !== undefined) && (
+            <div className="bg-white/50 rounded-lg p-3 text-center">
+              <CheckCircle className="h-5 w-5 text-green-600 mx-auto mb-1" />
+              <p className="text-xs text-gray-600 mb-1">Success</p>
               <p className="text-sm font-bold text-green-700">
                 {formatNumber(succeededTransactions)}
               </p>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Failed Transactions */}
-        {(failedTransactions !== undefined) && (
-          <div className="flex items-center space-x-2">
-            <XCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
-            <div>
-              <p className="text-xs text-gray-600">Failed</p>
+          {/* Failed Transactions */}
+          {(failedTransactions !== undefined) && (
+            <div className="bg-white/50 rounded-lg p-3 text-center">
+              <XCircle className="h-5 w-5 text-red-600 mx-auto mb-1" />
+              <p className="text-xs text-gray-600 mb-1">Failed</p>
               <p className="text-sm font-bold text-red-700">
                 {formatNumber(failedTransactions)}
               </p>
             </div>
+          )}
+        </div>
+      </div>
+
+      {/* Desktop Layout */}
+      <div className="hidden md:block">
+        {/* Account Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 mb-4">
+          {/* Account Number */}
+          <div className="flex items-center space-x-2">
+            <CreditCard className="h-4 w-4 text-blue-600 flex-shrink-0" />
+            <div>
+              <p className="text-xs text-gray-600">
+                {accountNumber.includes('All ') ? 'Summary' : 'Account'}
+              </p>
+              <p className={`text-sm font-semibold text-gray-900 ${
+                accountNumber.includes('All ') ? '' : 'font-mono'
+              }`}>
+                {accountNumber}
+              </p>
+            </div>
           </div>
-        )}
+
+          {/* Status Badge */}
+          <div className="flex justify-start md:justify-end">
+            <Badge 
+              variant="default" 
+              className={`w-fit ${
+                status === 'Total Summary' 
+                  ? 'bg-blue-100 text-blue-800 border-blue-200' 
+                  : 'bg-green-100 text-green-800 border-green-200'
+              }`}
+            >
+              <CheckCircle className="h-3 w-3 mr-1" />
+              {status}
+            </Badge>
+          </div>
+        </div>
+
+        {/* Statistics Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Total Amount */}
+          <div className="flex items-center space-x-2">
+            <DollarSign className="h-4 w-4 text-green-600 flex-shrink-0" />
+            <div>
+              <p className="text-xs text-gray-600">Total Amount</p>
+              <p className="text-sm font-bold text-gray-900">
+                {formatCurrency(totalAmount)}
+              </p>
+            </div>
+          </div>
+
+          {/* Total Transactions */}
+          <div className="flex items-center space-x-2">
+            <BarChart3 className="h-4 w-4 text-blue-600 flex-shrink-0" />
+            <div>
+              <p className="text-xs text-gray-600">Total Transactions</p>
+              <p className="text-sm font-bold text-gray-900">
+                {formatNumber(totalTransactions)}
+              </p>
+            </div>
+          </div>
+
+          {/* Succeeded Transactions */}
+          {(succeededTransactions !== undefined) && (
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+              <div>
+                <p className="text-xs text-gray-600">Success</p>
+                <p className="text-sm font-bold text-green-700">
+                  {formatNumber(succeededTransactions)}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Failed Transactions */}
+          {(failedTransactions !== undefined) && (
+            <div className="flex items-center space-x-2">
+              <XCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+              <div>
+                <p className="text-xs text-gray-600">Failed</p>
+                <p className="text-sm font-bold text-red-700">
+                  {formatNumber(failedTransactions)}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

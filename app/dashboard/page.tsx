@@ -504,25 +504,97 @@ const TransactionDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Modern Header */}
+      {/* Mobile-First Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          {/* Mobile Header - Compact */}
+          <div className="flex justify-between items-center h-14 md:h-16">
             {/* Logo & Title */}
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gray-900 rounded-xl flex items-center justify-center">
-                  <FileSpreadsheet className="w-6 h-6 text-white" />
+            <div className="flex items-center space-x-2 md:space-x-4">
+              <div className="flex items-center space-x-2 md:space-x-3">
+                <div className="w-8 h-8 md:w-10 md:h-10 bg-gray-900 rounded-lg md:rounded-xl flex items-center justify-center">
+                  <FileSpreadsheet className="w-4 h-4 md:w-6 md:h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-semibold text-gray-900">Finance Dashboard</h1>
-                  <p className="text-xs text-gray-500">Transaction Management System</p>
+                  <h1 className="text-lg md:text-xl font-semibold text-gray-900">Finance</h1>
+                  <p className="text-xs text-gray-500 hidden sm:block">Transaction Management</p>
                 </div>
               </div>
             </div>
 
-            {/* Header Stats */}
-            <div className="hidden md:flex items-center space-x-8">
+            {/* Mobile Actions - Icon Only */}
+            <div className="flex items-center space-x-1 md:space-x-3">
+              {/* Mobile Export Button */}
+              <Button
+                onClick={exportToExcel}
+                disabled={loading || transactions.length === 0}
+                size="sm"
+                variant="outline"
+                className="md:hidden p-2"
+                title="Export to Excel"
+              >
+                <Download className="w-4 h-4" />
+              </Button>
+              
+              {/* Desktop Export Button */}
+              <Button
+                onClick={exportToExcel}
+                disabled={loading || transactions.length === 0}
+                size="sm"
+                variant="outline"
+                className="hidden md:flex items-center space-x-2"
+              >
+                <Download className="w-4 h-4" />
+                <span>Export</span>
+              </Button>
+
+              {/* Refresh Button */}
+              <Button
+                onClick={() => loadTransactions(currentPage)}
+                disabled={loading}
+                size="sm"
+                variant="outline"
+                className="p-2 md:px-3"
+                title="Refresh Data"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <span className="hidden md:inline ml-2">Refresh</span>
+              </Button>
+
+              {/* Logout Button */}
+              <Button
+                onClick={logout}
+                size="sm"
+                variant="ghost"
+                className="p-2 md:px-3"
+                title="Logout"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden md:inline ml-2">Logout</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Mobile Stats Bar - Below Header */}
+          <div className="md:hidden border-t border-gray-100 px-4 py-2 bg-gray-50">
+            <div className="flex justify-between items-center text-xs">
+              <div className="flex items-center space-x-4">
+                <div>
+                  <span className="font-medium text-gray-900">{total.toLocaleString()}</span>
+                  <span className="text-gray-500 ml-1">records</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-900">{currentPage}/{totalPages}</span>
+                  <span className="text-gray-500 ml-1">pages</span>
+                </div>
+              </div>
+              <SyncStatusIndicator />
+            </div>
+          </div>
+
+          {/* Desktop Stats - In Header */}
+          <div className="hidden md:block absolute top-4 left-1/2 transform -translate-x-1/2">
+            <div className="flex items-center space-x-8">
               <div className="text-center">
                 <div className="text-lg font-semibold text-gray-900">{total.toLocaleString()}</div>
                 <div className="text-xs text-gray-500">Total Records</div>
@@ -533,39 +605,6 @@ const TransactionDashboard: React.FC = () => {
               </div>
               <div className="h-8 w-px bg-gray-200"></div>
               <SyncStatusIndicator />
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center space-x-3">
-              <Button
-                onClick={exportToExcel}
-                disabled={loading || transactions.length === 0}
-                size="sm"
-                variant="outline"
-                className="hidden sm:flex items-center space-x-2"
-              >
-                <Download className="w-4 h-4" />
-                <span>Export</span>
-              </Button>
-              <Button
-                onClick={() => loadTransactions(currentPage)}
-                disabled={loading}
-                size="sm"
-                variant="outline"
-                className="flex items-center space-x-2"
-              >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">Refresh</span>
-              </Button>
-              <Button
-                onClick={logout}
-                size="sm"
-                variant="ghost"
-                className="flex items-center space-x-2"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">Logout</span>
-              </Button>
             </div>
           </div>
         </div>
@@ -655,10 +694,111 @@ const TransactionDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Transactions Table */}
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <div className="min-w-[600px]">
+        {/* Transactions Display */}
+        <div>
+          {/* Mobile Card Layout */}
+          <div className="md:hidden">
+            {loading ? (
+              <div className="p-6 text-center">
+                <div className="flex flex-col items-center space-y-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                  <div>
+                    <h3 className="text-base font-medium text-gray-900">Loading transactions...</h3>
+                    <p className="text-sm text-gray-500 mt-1">Please wait while we fetch the latest data</p>
+                  </div>
+                </div>
+              </div>
+            ) : transactions.length === 0 ? (
+              <div className="p-6 text-center">
+                <div className="flex flex-col items-center space-y-4">
+                  <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                    <FileSpreadsheet className="w-6 h-6 text-gray-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-medium text-gray-900">No transactions found</h3>
+                    <p className="text-sm text-gray-500 mt-1">Try selecting a different account or refreshing the data</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {transactions.map((transaction) => (
+                  <div key={transaction.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
+                    {/* Clean Header: Status + Date */}
+                    <div className="flex items-center justify-between mb-4">
+                      <Badge 
+                        variant={getStatusVariant(transaction.status)}
+                        className="text-xs px-2.5 py-1 font-medium"
+                      >
+                        {getStatusIcon(transaction.status)}
+                        <span className="ml-1">{transaction.status}</span>
+                      </Badge>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-gray-900">
+                          {new Date(transaction.date).toLocaleDateString('en-IN', { 
+                            day: '2-digit', 
+                            month: 'short'
+                          })}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(transaction.date).toLocaleTimeString('en-IN', { 
+                            hour: '2-digit', 
+                            minute: '2-digit', 
+                            hour12: true 
+                          })}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Priority Information - Clean Grid */}
+                    <div className="space-y-3">
+                      {/* Account Holder Name */}
+                      <div>
+                        <h3 className="text-base font-semibold text-gray-900 leading-tight">
+                          {transaction.accountHolderName || 'Unknown Account'}
+                        </h3>
+                      </div>
+
+                      {/* Account Details - Side by Side */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <p className="text-xs text-gray-500 font-medium mb-1">Account No.</p>
+                          <p className="text-sm font-mono text-gray-900 leading-tight">
+                            {transaction.accountNumber || 'N/A'}
+                          </p>
+                        </div>
+                        {selectedAccount === 'all' && (
+                          <div>
+                            <p className="text-xs text-gray-500 font-medium mb-1">Source</p>
+                            <div className="flex items-center space-x-1">
+                              <span className="text-sm">
+                                {ACCOUNTS[transaction.source as keyof typeof ACCOUNTS]?.icon || '📄'}
+                              </span>
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {ACCOUNTS[transaction.source as keyof typeof ACCOUNTS]?.name || transaction.source?.toUpperCase() || 'Unknown'}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Transaction ID - Clean */}
+                      <div className="flex items-center space-x-2 pt-2 border-t border-gray-100">
+                        <Hash className="w-3 h-3 text-gray-400" />
+                        <p className="text-xs text-gray-600 font-medium">
+                          ID: {transaction.withdrawId}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Desktop Table Layout */}
+          <div className="hidden md:block bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="min-w-[600px] overflow-x-auto">
               <Table>
             <TableHeader>
               <TableRow className="bg-gray-50">
@@ -845,93 +985,172 @@ const TransactionDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Pagination & Controls */}
+        {/* Mobile-Optimized Pagination & Controls */}
         {!loading && transactions.length > 0 && (
-          <div className="mt-8 flex flex-col lg:flex-row items-center justify-between gap-4">
-            {/* Page Size Selector */}
-            <div className="flex items-center space-x-3">
-              <span className="text-sm font-medium text-gray-700">Rows per page:</span>
-              <div className="relative">
-                <select
-                  value={pageSize}
-                  onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                  className="bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent appearance-none"
-                  disabled={loading}
-                >
-                  {pageSizeOptions.map((size) => (
-                    <option key={size} value={size}>
-                      {size}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2 top-2.5 h-4 w-4 text-gray-400 pointer-events-none" />
+          <div className="mt-6 md:mt-8 space-y-4 md:space-y-0">
+            {/* Mobile Layout - Stacked */}
+            <div className="md:hidden space-y-4">
+              {/* Summary and Page Size */}
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-500">
+                  {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, total)} of {total}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-700">Per page:</span>
+                  <div className="relative">
+                    <select
+                      value={pageSize}
+                      onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                      className="bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent appearance-none"
+                      disabled={loading}
+                    >
+                      {pageSizeOptions.map((size) => (
+                        <option key={size} value={size}>
+                          {size}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-2 top-2.5 h-4 w-4 text-gray-400 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Mobile Pagination Controls */}
+              <div className="flex items-center justify-center">
+                <div className="bg-white border border-gray-200 rounded-lg px-4 py-2">
+                  <Pagination>
+                    <PaginationContent className="gap-1">
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          href="#" 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handlePageChange(currentPage - 1);
+                          }}
+                          className={`transition-colors h-10 w-10 p-0 ${
+                            currentPage <= 1 
+                              ? 'pointer-events-none opacity-50' 
+                              : 'hover:bg-gray-100'
+                          }`}
+                        />
+                      </PaginationItem>
+                      
+                      {/* Mobile simplified pagination - only show current and total */}
+                      <PaginationItem>
+                        <div className="flex items-center space-x-2 px-3 py-2">
+                          <span className="text-sm font-medium text-gray-900">{currentPage}</span>
+                          <span className="text-sm text-gray-500">of</span>
+                          <span className="text-sm font-medium text-gray-900">{totalPages}</span>
+                        </div>
+                      </PaginationItem>
+                      
+                      <PaginationItem>
+                        <PaginationNext 
+                          href="#" 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handlePageChange(currentPage + 1);
+                          }}
+                          className={`transition-colors h-10 w-10 p-0 ${
+                            currentPage >= totalPages 
+                              ? 'pointer-events-none opacity-50' 
+                              : 'hover:bg-gray-100'
+                          }`}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
               </div>
             </div>
 
-            {/* Pagination */}
-            <div className="bg-white border border-gray-200 rounded-lg px-4 py-2">
-              <Pagination>
-                <PaginationContent className="gap-1">
-                  <PaginationItem>
-                    <PaginationPrevious 
-                      href="#" 
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handlePageChange(currentPage - 1);
-                      }}
-                      className={`transition-colors ${
-                        currentPage <= 1 
-                          ? 'pointer-events-none opacity-50' 
-                          : 'hover:bg-gray-100'
-                      }`}
-                    />
-                  </PaginationItem>
-                  
-                  {generatePageNumbers().map((page, index) => (
-                    <PaginationItem key={index}>
-                      {page === '...' ? (
-                        <PaginationEllipsis className="text-gray-500" />
-                      ) : (
-                        <PaginationLink
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handlePageChange(page as number);
-                          }}
-                          isActive={page === currentPage}
-                          className={`transition-colors ${
-                            page === currentPage
-                              ? 'bg-gray-900 text-white hover:bg-gray-800'
-                              : 'hover:bg-gray-100'
-                          }`}
-                        >
-                          {page}
-                        </PaginationLink>
-                      )}
-                    </PaginationItem>
-                  ))}
-                  
-                  <PaginationItem>
-                    <PaginationNext 
-                      href="#" 
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handlePageChange(currentPage + 1);
-                      }}
-                      className={`transition-colors ${
-                        currentPage >= totalPages 
-                          ? 'pointer-events-none opacity-50' 
-                          : 'hover:bg-gray-100'
-                      }`}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            </div>
+            {/* Desktop Layout - Original Horizontal */}
+            <div className="hidden md:flex flex-col lg:flex-row items-center justify-between gap-4">
+              {/* Page Size Selector */}
+              <div className="flex items-center space-x-3">
+                <span className="text-sm font-medium text-gray-700">Rows per page:</span>
+                <div className="relative">
+                  <select
+                    value={pageSize}
+                    onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                    className="bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent appearance-none"
+                    disabled={loading}
+                  >
+                    {pageSizeOptions.map((size) => (
+                      <option key={size} value={size}>
+                        {size}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2 top-2.5 h-4 w-4 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
 
-            {/* Summary Info */}
-            <div className="text-sm text-gray-500">
-              Showing {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, total)} of {total} transactions
+              {/* Pagination */}
+              <div className="bg-white border border-gray-200 rounded-lg px-4 py-2">
+                <Pagination>
+                  <PaginationContent className="gap-1">
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        href="#" 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handlePageChange(currentPage - 1);
+                        }}
+                        className={`transition-colors ${
+                          currentPage <= 1 
+                            ? 'pointer-events-none opacity-50' 
+                            : 'hover:bg-gray-100'
+                        }`}
+                      />
+                    </PaginationItem>
+                    
+                    {generatePageNumbers().map((page, index) => (
+                      <PaginationItem key={index}>
+                        {page === '...' ? (
+                          <PaginationEllipsis className="text-gray-500" />
+                        ) : (
+                          <PaginationLink
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handlePageChange(page as number);
+                            }}
+                            isActive={page === currentPage}
+                            className={`transition-colors ${
+                              page === currentPage
+                                ? 'bg-gray-900 text-white hover:bg-gray-800'
+                                : 'hover:bg-gray-100'
+                            }`}
+                          >
+                            {page}
+                          </PaginationLink>
+                        )}
+                      </PaginationItem>
+                    ))}
+                    
+                    <PaginationItem>
+                      <PaginationNext 
+                        href="#" 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handlePageChange(currentPage + 1);
+                        }}
+                        className={`transition-colors ${
+                          currentPage >= totalPages 
+                            ? 'pointer-events-none opacity-50' 
+                            : 'hover:bg-gray-100'
+                        }`}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+
+              {/* Summary Info */}
+              <div className="text-sm text-gray-500">
+                Showing {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, total)} of {total} transactions
+              </div>
             </div>
           </div>
         )}
