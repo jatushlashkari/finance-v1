@@ -508,8 +508,8 @@ export class IntegratedDataSyncService {
       return null;
     }
 
-    // Schedule to run every 30 minutes in dev (production uses Vercel cron: daily at 1 AM IST)
-    this.syncJob = cron.schedule('0 */30 * * * *', async () => {
+    // Schedule to run daily at 1 AM IST (both dev and production)
+    this.syncJob = cron.schedule('0 0 1 * * *', async () => {
       await this.performSync();
     }, {
       timezone: "Asia/Kolkata"
@@ -517,11 +517,11 @@ export class IntegratedDataSyncService {
 
     console.log('🕐 NextJS-CronSync: Integrated cron job started - running daily at 1 AM IST');
     
-    // Run initial sync after 10 seconds (only in development)
+    // Run initial sync after 30 seconds (only in development, once per day)
     if (process.env.NODE_ENV !== 'production') {
       setTimeout(() => {
         this.performSync();
-      }, 10000);
+      }, 30000);
     }
 
     return this.syncJob;
@@ -561,23 +561,26 @@ export function getCronSyncService(): IntegratedDataSyncService {
   return syncServiceInstance;
 }
 
-// Auto-start the cron job when this module is imported in server environment
-if (typeof window === 'undefined') {
+// Auto-initialization flag to prevent multiple starts
+let autoInitialized = false;
+
+// Initialize cron service (only once)
+export function initializeCronService() {
+  if (typeof window !== 'undefined' || autoInitialized) return; // Client-side or already initialized
+  
   const isVercel = process.env.VERCEL === '1';
   
-  if (!isVercel && process.env.NODE_ENV !== 'production') {
-    // Only auto-start in development mode (non-Vercel)
-    const service = getCronSyncService();
-    service.startCronJob();
-  }
-  
-  console.log('🚀 NextJS Finance-v1 Integrated Data Sync Service');
+  // Disable auto-start for now to prevent infinite loops
+  console.log('🚀 NextJS Finance-v1 Integrated Data Sync Service (Manual Mode)');
   console.log('📋 Configuration:');
   console.log('   - Sync Interval: Daily at 1 AM IST');
   console.log('   - Accounts: DOA6PS, FWXEQK');
   console.log('   - Pages: 1 & 2 (30 records per account)');
   console.log('   - Database: MongoDB Cloud');
   console.log('   - Delays: 5-10s between pages, 10-15s between accounts');
-  console.log(`   - Mode: ${isVercel ? 'Vercel Serverless Cron' : 'Integrated with Next.js'}`);
+  console.log(`   - Mode: ${isVercel ? 'Vercel Serverless Cron' : 'Manual API calls only'}`);
+  console.log('   - Status: Auto-sync DISABLED (use manual sync via API)');
   console.log('');
+  
+  autoInitialized = true;
 }

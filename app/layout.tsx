@@ -2,7 +2,7 @@ import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { AuthProvider } from './contexts/AuthContext'
-import './lib/initCronSync' // Initialize integrated cron sync
+// import './lib/initCronSync' // Initialize integrated cron sync - DISABLED to prevent infinite loops
 
 const inter = Inter({ subsets: ['latin'] })
 

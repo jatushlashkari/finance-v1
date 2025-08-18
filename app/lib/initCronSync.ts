@@ -1,7 +1,7 @@
 // This file initializes the cron service with Next.js
 // Import this in layout.tsx to start the background sync
 
-import { getCronSyncService } from './cronService';
+import { initializeCronService } from './cronService';
 
 // Initialize the cron sync service in server environment only
 let isInitialized = false;
@@ -11,8 +11,8 @@ export function initializeCronSync() {
   if (typeof window !== 'undefined' || isInitialized) return;
   
   try {
-    const service = getCronSyncService();
-    service.startCronJob();
+    // Use the centralized initialization from cronService
+    initializeCronService();
     
     isInitialized = true;
     
@@ -29,5 +29,6 @@ export function initializeCronSync() {
   }
 }
 
-// Auto-initialize when this module loads
-initializeCronSync();
+// Auto-initialize disabled to prevent infinite loops
+// Use manual sync via /api/sync endpoint instead
+console.log('Auto-initialization disabled to prevent infinite API calls');

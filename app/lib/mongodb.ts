@@ -5,6 +5,7 @@ interface MongoTransaction {
   id?: string;
   withdrawId: string;
   date: string;
+  amount?: number;
   accountHolderName?: string;
   accountNumber?: string;
   ifscCode?: string;
@@ -58,7 +59,7 @@ export function transformTransaction(doc: MongoTransaction) {
     withdrawId: doc.withdrawId,
     date: doc.date,
     successDate: doc.successDate,
-    amount: 0, // Default amount since we don't have this in our schema
+    amount: doc.amount || 0, // Use actual amount from database
     accountHolderName: doc.accountHolderName,
     accountNumber: doc.accountNumber,
     ifscCode: doc.ifscCode,

@@ -87,7 +87,6 @@ const TransactionDashboard: React.FC = () => {
   // Load transactions for current page
   const loadTransactions = async (page: number = 1, applyFilters: boolean = false) => {
     if (loading) return; // Prevent multiple simultaneous requests
-    
     setLoading(true);
     setError(null);
     
@@ -109,6 +108,7 @@ const TransactionDashboard: React.FC = () => {
         filterParams
       );
       
+      // Always update state for successful requests
       setTransactions(result.transactions);
       setTotalPages(result.totalPages);
       setTotal(result.total);
@@ -117,6 +117,7 @@ const TransactionDashboard: React.FC = () => {
       setError(err instanceof Error ? err.message : 'Failed to load transactions');
       console.error('Error loading transactions:', err);
     } finally {
+      // Always set loading to false when request completes
       setLoading(false);
     }
   };
@@ -124,8 +125,11 @@ const TransactionDashboard: React.FC = () => {
   // Load initial data
   useEffect(() => {
     let mounted = true;
+    const abortController = new AbortController();
     
     const fetchData = async () => {
+      if (!mounted) return;
+      
       setLoading(true);
       setError(null);
       
@@ -141,30 +145,36 @@ const TransactionDashboard: React.FC = () => {
         const service = new NextApiTransactionService();
         const result = await service.fetchTransactionsPaginated(selectedAccount, 1, pageSize);
         
-        if (mounted) {
+        // Check if component is still mounted and request wasn't aborted
+        if (mounted && !abortController.signal.aborted) {
           setTransactions(result.transactions);
           setTotalPages(result.totalPages);
           setTotal(result.total);
           setCurrentPage(1);
         }
       } catch (err) {
-        if (mounted) {
+        // Only show error if component is still mounted and request wasn't aborted
+        if (mounted && !abortController.signal.aborted) {
           setError(err instanceof Error ? err.message : 'Failed to load transactions');
           console.error('Error loading transactions:', err);
         }
       } finally {
-        if (mounted) {
+        // Only set loading to false if component is still mounted
+        if (mounted && !abortController.signal.aborted) {
           setLoading(false);
         }
       }
     };
     
-    fetchData();
+    // Small delay to prevent rapid successive calls
+    const timeoutId = setTimeout(fetchData, 100);
     
     return () => {
       mounted = false;
+      abortController.abort();
+      clearTimeout(timeoutId);
     };
-  }, [selectedAccount, pageSize]); // Added pageSize dependency
+  }, [selectedAccount, pageSize]);
 
   // Handle page navigation
   const handlePageChange = (page: number) => {

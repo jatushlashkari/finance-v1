@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "lint:fix": "next lint --fix"
+    "lint:fix": "next lint --fix",
+    "update-amounts": "npx tsx scripts/run-amount-update.ts",
+    "test-connection": "npx tsx scripts/test-connection.ts"
   },
   "dependencies": {
     "@radix-ui/react-label": "^2.1.7",
@@ -42,6 +44,7 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "postcss": "^8.4.0",
     "tailwindcss": "^3.4.0",
+    "tsx": "^4.20.4",
     "typescript": "^5.2.0"
   }
 }
