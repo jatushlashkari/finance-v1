@@ -129,6 +129,7 @@ export class IntegratedDataSyncService {
 
   private async fetchLatestTransactions(account: keyof typeof API_CONFIGS) {
     const config = API_CONFIGS[account];
+    const allTransactions: TransactionData[] = [];
     
     try {
       // Call producer API first
@@ -137,9 +138,6 @@ export class IntegratedDataSyncService {
       // Wait 2 seconds before calling withdraw API
       await this.delay(2000);
       
-      // Fetch only page 1 (latest data)
-      const payload = { page: 1, size: 15 };
-
       const headers = {
         "accept": "application/json, text/plain, */*",
         "accept-language": "en-US,en;q=0.9",
@@ -157,16 +155,44 @@ export class IntegratedDataSyncService {
         "user-agent": config.userAgent
       };
 
-      const response = await axios.post(WITHDRAW_API_URL, payload, { headers });
+      // Fetch page 1 (latest data)
+      console.log(`🔄 NextJS-CronSync: Fetching page 1 for ${account.toUpperCase()}...`);
+      const page1Payload = { page: 1, size: 15 };
+      const page1Response = await axios.post(WITHDRAW_API_URL, page1Payload, { headers });
       
-      if (response.data.code === 0 && response.data.data?.records) {
-        return this.processTransactionData(response.data.data.records, account);
+      if (page1Response.data.code === 0 && page1Response.data.data?.records) {
+        const page1Transactions = this.processTransactionData(page1Response.data.data.records, account);
+        allTransactions.push(...page1Transactions);
+        console.log(`✅ NextJS-CronSync: Fetched ${page1Transactions.length} records from page 1 for ${account.toUpperCase()}`);
+      } else {
+        throw new Error(`Page 1 API returned error code: ${page1Response.data.code}`);
       }
 
-      throw new Error(`API returned error code: ${response.data.code}`);
+      // Wait 5-10 seconds before fetching page 2 (random delay to avoid rate limiting)
+      const delayTime = Math.floor(Math.random() * 5000) + 5000; // Random between 5-10 seconds
+      console.log(`⏳ NextJS-CronSync: Waiting ${delayTime}ms before fetching page 2 for ${account.toUpperCase()}...`);
+      await this.delay(delayTime);
+      
+      // Fetch page 2
+      console.log(`🔄 NextJS-CronSync: Fetching page 2 for ${account.toUpperCase()}...`);
+      const page2Payload = { page: 2, size: 15 };
+      const page2Response = await axios.post(WITHDRAW_API_URL, page2Payload, { headers });
+      
+      if (page2Response.data.code === 0 && page2Response.data.data?.records) {
+        const page2Transactions = this.processTransactionData(page2Response.data.data.records, account);
+        allTransactions.push(...page2Transactions);
+        console.log(`✅ NextJS-CronSync: Fetched ${page2Transactions.length} records from page 2 for ${account.toUpperCase()}`);
+      } else {
+        console.warn(`⚠️ NextJS-CronSync: Page 2 API returned error code: ${page2Response.data.code} for ${account.toUpperCase()}`);
+        // Don't throw error for page 2 failures, just log and continue with page 1 data
+      }
+
+      console.log(`📊 NextJS-CronSync: Total ${allTransactions.length} records fetched from both pages for ${account.toUpperCase()}`);
+      return allTransactions;
+      
     } catch (error) {
-      console.error(`❌ NextJS-CronSync: Failed to fetch latest data for ${account}:`, error);
-      return [];
+      console.error(`❌ NextJS-CronSync: Failed to fetch data for ${account}:`, error);
+      return allTransactions; // Return whatever we managed to fetch
     }
   }
 
@@ -431,11 +457,17 @@ export class IntegratedDataSyncService {
     try {
       await this.connect();
       
-      // Sync both accounts
-      const [doa6psStats, fwxeqkStats] = await Promise.all([
-        this.syncAccount('doa6ps'),
-        this.syncAccount('fwxeqk')
-      ]);
+      // Sync accounts sequentially to avoid overwhelming the API
+      console.log(`🔄 NextJS-CronSync: Syncing DOA6PS account...`);
+      const doa6psStats = await this.syncAccount('doa6ps');
+      
+      // Wait 10-15 seconds before syncing the next account
+      const accountDelayTime = Math.floor(Math.random() * 5000) + 10000; // Random between 10-15 seconds
+      console.log(`⏳ NextJS-CronSync: Waiting ${accountDelayTime}ms before syncing next account...`);
+      await this.delay(accountDelayTime);
+      
+      console.log(`🔄 NextJS-CronSync: Syncing FWXEQK account...`);
+      const fwxeqkStats = await this.syncAccount('fwxeqk');
 
       const endTime = this.getCurrentISTDate();
       const duration = endTime.getTime() - startTime.getTime();
@@ -543,7 +575,9 @@ if (typeof window === 'undefined') {
   console.log('📋 Configuration:');
   console.log('   - Sync Interval: Daily at 1 AM IST');
   console.log('   - Accounts: DOA6PS, FWXEQK');
+  console.log('   - Pages: 1 & 2 (30 records per account)');
   console.log('   - Database: MongoDB Cloud');
+  console.log('   - Delays: 5-10s between pages, 10-15s between accounts');
   console.log(`   - Mode: ${isVercel ? 'Vercel Serverless Cron' : 'Integrated with Next.js'}`);
   console.log('');
 }
