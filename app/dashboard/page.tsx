@@ -32,10 +32,12 @@ import {
   Building,
   LogOut,
   ChevronDown,
-  Download
+  Download,
+  Receipt
 } from 'lucide-react';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
+import Link from 'next/link';
 import NextApiTransactionService from '../lib/nextApiTransactionService';
 import { Transaction, TransactionStatus } from '../types/transaction';
 import { useAuth } from '../contexts/AuthContext';
@@ -548,6 +550,24 @@ const TransactionDashboard: React.FC = () => {
                 <span>Export</span>
               </Button>
 
+              {/* Accounts Button */}
+              <Link href="/accounts">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="p-2 md:px-3"
+                  title="View Accounts"
+                >
+                  <User className="w-4 h-4" />
+                  <span className="hidden md:inline ml-2">Accounts</span>
+                </Button>
+              </Link>
+
+              {/* Desktop Sync Button */}
+              <div className="hidden md:block">
+                <SyncStatusIndicator />
+              </div>
+
               {/* Refresh Button */}
               <Button
                 onClick={() => loadTransactions(currentPage)}
@@ -592,19 +612,23 @@ const TransactionDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Desktop Stats - In Header */}
-          <div className="hidden md:block absolute top-4 left-1/2 transform -translate-x-1/2">
-            <div className="flex items-center space-x-8">
-              <div className="text-center">
-                <div className="text-lg font-semibold text-gray-900">{total.toLocaleString()}</div>
-                <div className="text-xs text-gray-500">Total Records</div>
+          {/* Desktop Stats - Below Header */}
+          <div className="hidden md:block bg-gray-50 border-t border-gray-100 px-4 py-2">
+            <div className="flex justify-between items-center text-sm">
+              <div className="flex items-center space-x-6">
+                <div>
+                  <span className="font-medium text-gray-900">{total.toLocaleString()}</span>
+                  <span className="text-gray-500 ml-1">total records</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-900">{currentPage} / {totalPages}</span>
+                  <span className="text-gray-500 ml-1">pages</span>
+                </div>
               </div>
-              <div className="text-center">
-                <div className="text-lg font-semibold text-gray-900">{currentPage} / {totalPages}</div>
-                <div className="text-xs text-gray-500">Current Page</div>
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                <span className="text-gray-600 text-xs">Last synced: {new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
-              <div className="h-8 w-px bg-gray-200"></div>
-              <SyncStatusIndicator />
             </div>
           </div>
         </div>
@@ -699,9 +723,9 @@ const TransactionDashboard: React.FC = () => {
           {/* Mobile Card Layout */}
           <div className="md:hidden">
             {loading ? (
-              <div className="p-6 text-center">
+              <div className="p-12 text-center">
                 <div className="flex flex-col items-center space-y-4">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                   <div>
                     <h3 className="text-base font-medium text-gray-900">Loading transactions...</h3>
                     <p className="text-sm text-gray-500 mt-1">Please wait while we fetch the latest data</p>
@@ -709,86 +733,122 @@ const TransactionDashboard: React.FC = () => {
                 </div>
               </div>
             ) : transactions.length === 0 ? (
-              <div className="p-6 text-center">
+              <div className="p-12 text-center">
                 <div className="flex flex-col items-center space-y-4">
-                  <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                    <FileSpreadsheet className="w-6 h-6 text-gray-400" />
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                    <FileSpreadsheet className="w-8 h-8 text-gray-400" />
                   </div>
                   <div>
-                    <h3 className="text-base font-medium text-gray-900">No transactions found</h3>
+                    <h3 className="text-lg font-medium text-gray-900">No Transactions Found</h3>
                     <p className="text-sm text-gray-500 mt-1">Try selecting a different account or refreshing the data</p>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="space-y-4">
-                {transactions.map((transaction) => (
-                  <div key={transaction.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
-                    {/* Clean Header: Status + Date */}
-                    <div className="flex items-center justify-between mb-4">
+              <div className="space-y-3 transactions-container">
+                {transactions.map((transaction, index) => (
+                  <div 
+                    key={transaction.id} 
+                    className="transaction-card mobile-transaction-item bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-lg hover:border-gray-300 transition-all duration-200"
+                    style={{ 
+                      animationDelay: `${index * 50}ms`,
+                      animation: 'fadeInUp 0.3s ease-out forwards'
+                    }}
+                  >
+                    {/* Date and Time with Status */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-2">
+                        <Calendar className="w-4 h-4 text-gray-500" />
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-gray-900">
+                            {new Date(transaction.date).toLocaleDateString('en-IN', { 
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {new Date(transaction.date).toLocaleTimeString('en-IN', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                      </div>
                       <Badge 
                         variant={getStatusVariant(transaction.status)}
-                        className="text-xs px-2.5 py-1 font-medium"
+                        className="border-none font-medium"
                       >
                         {getStatusIcon(transaction.status)}
                         <span className="ml-1">{transaction.status}</span>
                       </Badge>
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-gray-900">
-                          {new Date(transaction.date).toLocaleDateString('en-IN', { 
-                            day: '2-digit', 
-                            month: 'short'
-                          })}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(transaction.date).toLocaleTimeString('en-IN', { 
-                            hour: '2-digit', 
-                            minute: '2-digit', 
-                            hour12: true 
-                          })}
-                        </p>
+                    </div>
+
+                    {/* Account Holder */}
+                    <div className="flex items-center space-x-3 mb-3">
+                      <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <User className="w-5 h-5 text-gray-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-semibold text-gray-900 truncate">
+                          {transaction.accountHolderName || 'Unknown Account'}
+                        </h3>
+                        <p className="text-xs text-gray-500">Account Holder</p>
                       </div>
                     </div>
 
-                    {/* Priority Information - Clean Grid */}
-                    <div className="space-y-3">
-                      {/* Account Holder Name */}
-                      <div>
-                        <h3 className="text-base font-semibold text-gray-900 leading-tight">
-                          {transaction.accountHolderName || 'Unknown Account'}
-                        </h3>
-                      </div>
-
-                      {/* Account Details - Side by Side */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <p className="text-xs text-gray-500 font-medium mb-1">Account No.</p>
-                          <p className="text-sm font-mono text-gray-900 leading-tight">
-                            {transaction.accountNumber || 'N/A'}
-                          </p>
+                    {/* Transaction Details */}
+                    <div className="space-y-3 pt-3 border-t border-gray-100">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <CreditCard className="w-4 h-4 text-gray-400" />
+                          <span className="text-sm text-gray-600">Account:</span>
                         </div>
-                        {selectedAccount === 'all' && (
-                          <div>
-                            <p className="text-xs text-gray-500 font-medium mb-1">Source</p>
-                            <div className="flex items-center space-x-1">
-                              <span className="text-sm">
-                                {ACCOUNTS[transaction.source as keyof typeof ACCOUNTS]?.icon || '📄'}
-                              </span>
-                              <p className="text-sm font-medium text-gray-900 truncate">
-                                {ACCOUNTS[transaction.source as keyof typeof ACCOUNTS]?.name || transaction.source?.toUpperCase() || 'Unknown'}
-                              </p>
-                            </div>
+                        <span className="text-sm font-mono text-gray-900 bg-gray-50 px-3 py-1 rounded-lg">
+                          {transaction.accountNumber || 'N/A'}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Hash className="w-4 h-4 text-gray-400" />
+                          <span className="text-sm text-gray-600">Transaction ID:</span>
+                        </div>
+                        <span className="text-sm font-mono text-gray-900 bg-gray-50 px-3 py-1 rounded-lg">
+                          {transaction.withdrawId}
+                        </span>
+                      </div>
+                      
+                      {transaction.utr && (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Receipt className="w-4 h-4 text-gray-400" />
+                            <span className="text-sm text-gray-600">UTR:</span>
                           </div>
-                        )}
-                      </div>
-
-                      {/* Transaction ID - Clean */}
-                      <div className="flex items-center space-x-2 pt-2 border-t border-gray-100">
-                        <Hash className="w-3 h-3 text-gray-400" />
-                        <p className="text-xs text-gray-600 font-medium">
-                          ID: {transaction.withdrawId}
-                        </p>
-                      </div>
+                          <span className="text-sm font-mono text-gray-900 bg-gray-50 px-3 py-1 rounded-lg">
+                            {transaction.utr}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {selectedAccount === 'all' && (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-4 h-4 flex items-center justify-center">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            </div>
+                            <span className="text-sm text-gray-600">Source:</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm">
+                              {ACCOUNTS[transaction.source as keyof typeof ACCOUNTS]?.icon || '📄'}
+                            </span>
+                            <Badge variant="outline" className="text-xs font-medium">
+                              {ACCOUNTS[transaction.source as keyof typeof ACCOUNTS]?.name || transaction.source?.toUpperCase() || 'Unknown'}
+                            </Badge>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -796,191 +856,214 @@ const TransactionDashboard: React.FC = () => {
             )}
           </div>
 
-          {/* Desktop Table Layout */}
-          <div className="hidden md:block bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-            <div className="min-w-[600px] overflow-x-auto">
-              <Table>
-            <TableHeader>
-              <TableRow className="bg-gray-50">
-                <TableHead className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[140px]">
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="w-4 h-4" />
-                    <span>Date & Time</span>
-                  </div>
-                </TableHead>
-                {selectedAccount === 'all' && (
-                  <TableHead className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[100px]">
-                    <div className="flex items-center space-x-2">
-                      <Building className="w-4 h-4" />
-                      <span>Account</span>
-                    </div>
-                  </TableHead>
-                )}
-                <TableHead className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[110px]">
-                  <div className="flex items-center space-x-2">
-                    <Hash className="w-4 h-4" />
-                    <span>Withdraw ID</span>
-                  </div>
-                </TableHead>
-                <TableHead className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[140px]">
-                  <div className="flex items-center space-x-2">
-                    <User className="w-4 h-4" />
-                    <span className="hidden md:inline">Account Holder</span>
-                    <span className="md:hidden">Holder</span>
-                  </div>
-                </TableHead>
-                <TableHead className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[130px]">
-                  <div className="flex items-center space-x-2">
-                    <CreditCard className="w-4 h-4" />
-                    <span className="hidden md:inline">Account Number</span>
-                    <span className="md:hidden">Account</span>
-                  </div>
-                </TableHead>
-                <TableHead className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[90px] hidden lg:table-cell">
-                  <div className="flex items-center space-x-2">
-                    <Building className="w-4 h-4" />
-                    <span>IFSC Code</span>
-                  </div>
-                </TableHead>
-                <TableHead className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[120px] hidden xl:table-cell">
-                  <div className="flex items-center space-x-2">
-                    <Hash className="w-4 h-4" />
-                    <span>UTR</span>
-                  </div>
-                </TableHead>
-                <TableHead className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[90px]">
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="w-4 h-4" />
-                    <span>Status</span>
-                  </div>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={selectedAccount === 'all' ? 8 : 6} className="text-center py-12">
-                    <div className="flex flex-col items-center space-y-4">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                      <div>
-                        <h3 className="text-base font-medium text-gray-900">Loading transactions...</h3>
-                        <p className="text-sm text-gray-500 mt-1">Please wait while we fetch the latest data</p>
+          {/* Clean Modern Table */}
+          <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <Table className="w-full">
+                <TableHeader>
+                  <TableRow className="bg-gray-50 border-b border-gray-200">
+                    {/* Date Column */}
+                    <TableHead className="px-3 py-3 text-left text-sm font-medium text-gray-700 w-32">
+                      <div className="flex items-center space-x-2">
+                        <Calendar className="w-4 h-4 text-gray-500" />
+                        <span>Date & Time</span>
                       </div>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : transactions.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={selectedAccount === 'all' ? 8 : 6} className="text-center py-12">
-                    <div className="flex flex-col items-center space-y-4">
-                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                        <FileSpreadsheet className="w-6 h-6 text-gray-400" />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-medium text-gray-900">No transactions found</h3>
-                        <p className="text-sm text-gray-500 mt-1">Try selecting a different account or refreshing the data</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                transactions.map((transaction) => (
-                  <TableRow 
-                    key={transaction.id} 
-                    className="hover:bg-gray-50 transition-colors duration-150"
-                  >
-                    <TableCell 
-                      className="px-4 py-3 cursor-copy" 
-                      onDoubleClick={() => copyToClipboard(formatDate(transaction.date), 'Date')}
-                      title="Double-click to copy"
-                    >
-                      <div className="text-sm text-gray-900">
-                        <div className="font-medium">{new Date(transaction.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
-                        <div className="text-xs text-gray-500">{new Date(transaction.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</div>
-                      </div>
-                    </TableCell>
+                    </TableHead>
+                    
+                    {/* Source Column (Conditional) */}
                     {selectedAccount === 'all' && (
-                      <TableCell 
-                        className="px-4 py-3 cursor-copy" 
-                        onDoubleClick={() => copyToClipboard(ACCOUNTS[transaction.source as keyof typeof ACCOUNTS]?.name || transaction.source?.toUpperCase() || 'Unknown', 'Account')}
-                        title="Double-click to copy"
-                      >
-                        <div className="flex items-center justify-center">
-                          <span className="text-lg">{ACCOUNTS[transaction.source as keyof typeof ACCOUNTS]?.icon || '📄'}</span>
-                          <span className="text-sm font-medium text-gray-900 ml-2 hidden sm:inline">
-                            {ACCOUNTS[transaction.source as keyof typeof ACCOUNTS]?.name || transaction.source?.toUpperCase() || 'Unknown'}
-                          </span>
+                      <TableHead className="px-3 py-3 text-left text-sm font-medium text-gray-700 w-24">
+                        <div className="flex items-center space-x-2">
+                          <Building className="w-4 h-4 text-gray-500" />
+                          <span>Source</span>
+                        </div>
+                      </TableHead>
+                    )}
+                    
+                    {/* Transaction ID */}
+                    <TableHead className="px-3 py-3 text-left text-sm font-medium text-gray-700 w-28">
+                      <div className="flex items-center space-x-2">
+                        <Hash className="w-4 h-4 text-gray-500" />
+                        <span>Transaction ID</span>
+                      </div>
+                    </TableHead>
+                    
+                    {/* Account Holder */}
+                    <TableHead className="px-3 py-3 text-left text-sm font-medium text-gray-700">
+                      <div className="flex items-center space-x-2">
+                        <User className="w-4 h-4 text-gray-500" />
+                        <span>Account Holder</span>
+                      </div>
+                    </TableHead>
+                    
+                    {/* Account Number */}
+                    <TableHead className="px-3 py-3 text-left text-sm font-medium text-gray-700 w-36">
+                      <div className="flex items-center space-x-2">
+                        <CreditCard className="w-4 h-4 text-gray-500" />
+                        <span>Account Number</span>
+                      </div>
+                    </TableHead>
+                    
+                    {/* UTR */}
+                    <TableHead className="px-3 py-3 text-left text-sm font-medium text-gray-700 w-32">
+                      <div className="flex items-center space-x-2">
+                        <Hash className="w-4 h-4 text-gray-500" />
+                        <span>UTR Reference</span>
+                      </div>
+                    </TableHead>
+                    
+                    {/* Status */}
+                    <TableHead className="px-3 py-3 text-center text-sm font-medium text-gray-700 w-24">
+                      <div className="flex items-center justify-center space-x-2">
+                        <CheckCircle className="w-4 h-4 text-gray-500" />
+                        <span>Status</span>
+                      </div>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="bg-white divide-y divide-gray-200">
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={selectedAccount === 'all' ? 7 : 6} className="text-center py-12">
+                        <div className="flex flex-col items-center space-y-4">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                          <div>
+                            <h3 className="text-sm font-medium text-gray-900">Loading transactions...</h3>
+                            <p className="text-sm text-gray-500 mt-1">Please wait while we fetch the data</p>
+                          </div>
                         </div>
                       </TableCell>
-                    )}
-                    <TableCell 
-                      className="px-4 py-3 cursor-copy" 
-                      onDoubleClick={() => copyToClipboard(transaction.withdrawId, 'Withdraw ID')}
-                      title="Double-click to copy"
-                    >
-                      <span className="inline-flex items-center px-2.5 py-1 rounded text-sm font-mono bg-gray-100 text-gray-800">
-                        {transaction.withdrawId}
-                      </span>
-                    </TableCell>
-                    <TableCell 
-                      className="px-4 py-3 cursor-copy max-w-[140px]" 
-                      onDoubleClick={() => copyToClipboard(transaction.accountHolderName || '-', 'Account Holder')}
-                      title="Double-click to copy"
-                    >
-                      <div className="text-sm text-gray-900 truncate">
-                        {transaction.accountHolderName || '-'}
-                      </div>
-                    </TableCell>
-                    <TableCell 
-                      className="px-4 py-3 cursor-copy" 
-                      onDoubleClick={() => copyToClipboard(transaction.accountNumber || '-', 'Account Number')}
-                      title="Double-click to copy"
-                    >
-                      <span className="text-sm font-mono text-gray-900">
-                        {transaction.accountNumber || '-'}
-                      </span>
-                    </TableCell>
-                    <TableCell 
-                      className="px-4 py-3 cursor-copy hidden lg:table-cell" 
-                      onDoubleClick={() => copyToClipboard(transaction.ifscCode || '-', 'IFSC Code')}
-                      title="Double-click to copy"
-                    >
-                      <span className="text-sm font-mono text-gray-600">
-                        {transaction.ifscCode || '-'}
-                      </span>
-                    </TableCell>
-                    <TableCell 
-                      className="px-4 py-3 cursor-copy hidden xl:table-cell" 
-                      onDoubleClick={() => copyToClipboard(transaction.utr || '-', 'UTR')}
-                      title="Double-click to copy"
-                    >
-                      <span className="text-sm font-mono text-gray-500 truncate">
-                        {transaction.utr || '-'}
-                      </span>
-                    </TableCell>
-                    <TableCell 
-                      className="px-4 py-3 cursor-copy" 
-                      onDoubleClick={() => copyToClipboard(transaction.status, 'Status')}
-                      title="Double-click to copy"
-                    >
-                      <Badge 
-                        variant={getStatusVariant(transaction.status)}
-                        className="text-sm px-3 py-1"
+                    </TableRow>
+                  ) : transactions.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={selectedAccount === 'all' ? 7 : 6} className="text-center py-12">
+                        <div className="flex flex-col items-center space-y-4">
+                          <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                            <FileSpreadsheet className="w-6 h-6 text-gray-400" />
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-medium text-gray-900">No transactions found</h3>
+                            <p className="text-sm text-gray-500 mt-1">Try selecting a different account or refreshing the data</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    transactions.map((transaction) => (
+                      <TableRow 
+                        key={transaction.id} 
+                        className="hover:bg-gray-50 transition-colors"
                       >
-                        <span className="hidden sm:flex items-center space-x-1">
-                          {getStatusIcon(transaction.status)}
-                          <span>{transaction.status}</span>
-                        </span>
-                        <span className="sm:hidden">
-                          {getStatusIcon(transaction.status)}
-                        </span>
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                        {/* Date Column */}
+                        <TableCell 
+                          className="px-3 py-3 cursor-copy w-32" 
+                          onDoubleClick={() => copyToClipboard(formatDate(transaction.date), 'Date')}
+                          title="Double-click to copy date"
+                        >
+                          <div className="text-sm">
+                            <div className="font-medium text-gray-900">
+                              {new Date(transaction.date).toLocaleDateString('en-IN', { 
+                                day: '2-digit', 
+                                month: 'short',
+                                year: 'numeric'
+                              })}
+                            </div>
+                            <div className="text-gray-500">
+                              {new Date(transaction.date).toLocaleTimeString('en-IN', { 
+                                hour: '2-digit', 
+                                minute: '2-digit', 
+                                hour12: true 
+                              })}
+                            </div>
+                          </div>
+                        </TableCell>
+
+                        {/* Source Column (Conditional) */}
+                        {selectedAccount === 'all' && (
+                          <TableCell 
+                            className="px-3 py-3 cursor-copy w-24" 
+                            onDoubleClick={() => copyToClipboard(ACCOUNTS[transaction.source as keyof typeof ACCOUNTS]?.name || transaction.source?.toUpperCase() || 'Unknown', 'Source')}
+                            title="Double-click to copy source"
+                          >
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm">{ACCOUNTS[transaction.source as keyof typeof ACCOUNTS]?.icon || '📄'}</span>
+                              <span className="text-sm font-medium text-gray-900 truncate">
+                                {ACCOUNTS[transaction.source as keyof typeof ACCOUNTS]?.name || transaction.source?.toUpperCase() || 'Unknown'}
+                              </span>
+                            </div>
+                          </TableCell>
+                        )}
+
+                        {/* Transaction ID */}
+                        <TableCell 
+                          className="px-3 py-3 cursor-copy w-28" 
+                          onDoubleClick={() => copyToClipboard(transaction.withdrawId, 'Transaction ID')}
+                          title="Double-click to copy ID"
+                        >
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded text-sm font-mono bg-gray-100 text-gray-800">
+                            {transaction.withdrawId}
+                          </span>
+                        </TableCell>
+
+                        {/* Account Holder */}
+                        <TableCell 
+                          className="px-3 py-3 cursor-copy" 
+                          onDoubleClick={() => copyToClipboard(transaction.accountHolderName || '-', 'Account Holder')}
+                          title="Double-click to copy account holder name"
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                              <User className="w-4 h-4 text-gray-600" />
+                            </div>
+                            <div className="text-sm font-medium text-gray-900 truncate">
+                              {transaction.accountHolderName || 'Unknown Account'}
+                            </div>
+                          </div>
+                        </TableCell>
+
+                        {/* Account Number */}
+                        <TableCell 
+                          className="px-3 py-3 cursor-copy w-36" 
+                          onDoubleClick={() => copyToClipboard(transaction.accountNumber || '-', 'Account Number')}
+                          title="Double-click to copy account number"
+                        >
+                          <span className="text-sm font-mono text-gray-900">
+                            {transaction.accountNumber || 'N/A'}
+                          </span>
+                        </TableCell>
+
+                        {/* UTR */}
+                        <TableCell 
+                          className="px-3 py-3 cursor-copy w-32" 
+                          onDoubleClick={() => copyToClipboard(transaction.utr || '-', 'UTR')}
+                          title="Double-click to copy UTR"
+                        >
+                          <span className="text-sm font-mono text-gray-600 truncate">
+                            {transaction.utr || 'N/A'}
+                          </span>
+                        </TableCell>
+
+                        {/* Status */}
+                        <TableCell 
+                          className="px-3 py-3 text-center cursor-copy w-24" 
+                          onDoubleClick={() => copyToClipboard(transaction.status, 'Status')}
+                          title="Double-click to copy status"
+                        >
+                          <Badge 
+                            variant={getStatusVariant(transaction.status)}
+                            className="text-sm px-2.5 py-0.5"
+                          >
+                            <span className="flex items-center space-x-1">
+                              {getStatusIcon(transaction.status)}
+                              <span>{transaction.status}</span>
+                            </span>
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </div>
           </div>
         </div>

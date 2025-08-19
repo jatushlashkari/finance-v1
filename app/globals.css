@@ -54,3 +54,44 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgb(var(--foreground));
 }
+
+/* Mobile transaction cards enhancements */
+@media (max-width: 768px) {
+  .transaction-card {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  .transaction-card:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+  
+  /* Smooth scrolling for mobile */
+  .transactions-container {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Better touch targets for mobile */
+  .mobile-transaction-item {
+    min-height: 44px; /* iOS minimum touch target */
+    touch-action: manipulation;
+  }
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Staggered animation for transaction cards */
+.transaction-card {
+  opacity: 0;
+}

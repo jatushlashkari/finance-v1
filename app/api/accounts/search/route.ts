@@ -1,0 +1,177 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getDatabase } from '../../../lib/mongodb';
+
+interface AccountStats {
+  accountHolderName: string;
+  accountNumber: string;
+  totalTransactions: number;
+  successTransactions: number;
+  failedTransactions: number;
+  processingTransactions: number;
+  totalAmount: number;
+  lastTransactionDate: string;
+  firstTransactionDate: string;
+  isBookmarked: boolean;
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const searchQuery = searchParams.get('q') || '';
+    
+    const db = await getDatabase();
+    
+    // Get bookmarked account numbers for marking
+    const bookmarksCollection = db.collection('account_bookmarks');
+    const bookmarks = await bookmarksCollection.find({}).toArray();
+    const bookmarkedAccountNumbers = new Set(bookmarks.map(b => b.accountNumber));
+
+    // Get data from both account collections
+    const accounts: AccountStats[] = [];
+    const accountTypes = ['doa6ps', 'fwxeqk'];
+
+    for (const accountType of accountTypes) {
+      const collection = db.collection(`transactions_${accountType}`);
+      
+      // Create match stage for search
+      const matchStage: Record<string, unknown> = {};
+      if (searchQuery) {
+        Object.assign(matchStage, {
+          $or: [
+            { accountHolderName: { $regex: searchQuery, $options: 'i' } },
+            { accountNumber: { $regex: searchQuery, $options: 'i' } }
+          ]
+        });
+      }
+
+      // Aggregate pipeline to get account stats
+      const pipeline = [
+        ...(Object.keys(matchStage).length > 0 ? [{ $match: matchStage }] : []),
+        {
+          $group: {
+            _id: {
+              accountHolderName: "$accountHolderName",
+              accountNumber: "$accountNumber"
+            },
+            totalTransactions: { $sum: 1 },
+            successTransactions: {
+              $sum: {
+                $cond: [{ $eq: ["$status", "Succeeded"] }, 1, 0]
+              }
+            },
+            failedTransactions: {
+              $sum: {
+                $cond: [{ $eq: ["$status", "Failed"] }, 1, 0]
+              }
+            },
+            processingTransactions: {
+              $sum: {
+                $cond: [{ $eq: ["$status", "Processing"] }, 1, 0]
+              }
+            },
+            totalAmount: { 
+              $sum: { 
+                $cond: [
+                  { $eq: ["$status", "Succeeded"] }, 
+                  { $ifNull: ["$amount", 0] }, 
+                  0
+                ]
+              }
+            },
+            lastTransactionDate: { $max: "$date" },
+            firstTransactionDate: { $min: "$date" }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            accountHolderName: "$_id.accountHolderName",
+            accountNumber: "$_id.accountNumber",
+            totalTransactions: 1,
+            successTransactions: 1,
+            failedTransactions: 1,
+            processingTransactions: 1,
+            totalAmount: 1,
+            lastTransactionDate: 1,
+            firstTransactionDate: 1,
+            source: accountType
+          }
+        }
+      ];
+
+      const accountData = await collection.aggregate(pipeline).toArray();
+      accounts.push(...(accountData as AccountStats[]));
+    }
+
+    // Merge duplicate accounts by account number (combine statistics from both collections)
+    const uniqueAccounts = accounts.reduce((acc, current) => {
+      const existing = acc.find(item => item.accountNumber === current.accountNumber);
+      if (!existing) {
+        acc.push({
+          ...current,
+          isBookmarked: bookmarkedAccountNumbers.has(current.accountNumber)
+        });
+      } else {
+        // Merge statistics from both collections
+        const index = acc.findIndex(item => item.accountNumber === current.accountNumber);
+        acc[index] = {
+          ...existing,
+          // Use the account holder name from the more recent record
+          accountHolderName: new Date(current.lastTransactionDate) > new Date(existing.lastTransactionDate) 
+            ? current.accountHolderName 
+            : existing.accountHolderName,
+          // Sum up all transaction counts
+          totalTransactions: existing.totalTransactions + current.totalTransactions,
+          successTransactions: existing.successTransactions + current.successTransactions,
+          failedTransactions: existing.failedTransactions + current.failedTransactions,
+          processingTransactions: existing.processingTransactions + current.processingTransactions,
+          // Sum up total amounts
+          totalAmount: existing.totalAmount + current.totalAmount,
+          // Keep the most recent transaction date
+          lastTransactionDate: new Date(current.lastTransactionDate) > new Date(existing.lastTransactionDate)
+            ? current.lastTransactionDate
+            : existing.lastTransactionDate,
+          // Keep the earliest transaction date
+          firstTransactionDate: new Date(current.firstTransactionDate) < new Date(existing.firstTransactionDate)
+            ? current.firstTransactionDate
+            : existing.firstTransactionDate,
+          // Preserve bookmark status
+          isBookmarked: bookmarkedAccountNumbers.has(current.accountNumber)
+        };
+      }
+      return acc;
+    }, [] as AccountStats[]);
+
+    // Filter out accounts with null or empty account holder names and sort by last transaction date
+    const validAccounts = uniqueAccounts
+      .filter((account: AccountStats) => 
+        account.accountHolderName && 
+        account.accountHolderName.trim() !== '' &&
+        account.accountNumber &&
+        account.accountNumber.trim() !== ''
+      )
+      .sort((a: AccountStats, b: AccountStats) => new Date(b.lastTransactionDate).getTime() - new Date(a.lastTransactionDate).getTime());
+
+    // Limit results for search
+    const limitedAccounts = searchQuery ? validAccounts.slice(0, 20) : validAccounts.slice(0, 50);
+
+    return NextResponse.json({
+      success: true,
+      accounts: limitedAccounts,
+      count: limitedAccounts.length,
+      totalFound: validAccounts.length,
+      searchQuery: searchQuery
+    });
+
+  } catch (error) {
+    console.error('Error searching accounts:', error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Failed to search accounts',
+        accounts: []
+      },
+      { status: 500 }
+    );
+  }
+}

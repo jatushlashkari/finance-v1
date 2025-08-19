@@ -57,17 +57,35 @@ export async function GET(request: NextRequest) {
     }
 
     let totalTransactions = 0;
+    let totalAmount = 0;
 
-    // Count successful transactions from selected collections
+    // Calculate summary from selected collections
     for (const collectionName of collections) {
       const collection = db.collection(collectionName);
       
+      // Count transactions
       const count = await collection.countDocuments(matchStage);
       totalTransactions += count;
-    }
 
-    // Calculate total amount as 20000 * successful transactions
-    const totalAmount = totalTransactions * 20000;
+      // Sum actual amounts from transactions
+      const amountResult = await collection.aggregate([
+        { $match: matchStage },
+        { 
+          $group: { 
+            _id: null, 
+            totalAmount: { 
+              $sum: "$amount"
+            },
+            count: { $sum: 1 },
+            amounts: { $push: "$amount" } // Debug: collect all amounts
+          } 
+        }
+      ]).toArray();
+
+      if (amountResult.length > 0 && amountResult[0].totalAmount) {
+        totalAmount += amountResult[0].totalAmount;
+      }
+    }
 
     return NextResponse.json({
       success: true,

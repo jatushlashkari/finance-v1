@@ -24,8 +24,8 @@ const SyncStatusIndicator: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center space-x-2 md:space-x-3">
-      {/* Mobile - With Text */}
+    <>
+      {/* Mobile - With Text (shown in mobile stats bar) */}
       <div className="md:hidden flex items-center space-x-2">
         <div className="w-2 h-2 rounded-full bg-green-500"></div>
         <Button
@@ -43,27 +43,23 @@ const SyncStatusIndicator: React.FC = () => {
         </Button>
       </div>
 
-      {/* Desktop - Full Layout */}
-      <div className="hidden md:flex items-center space-x-3">
-        {/* Status Indicator */}
-        <div className="flex items-center space-x-2">
-          <div className="w-2 h-2 rounded-full bg-green-500"></div>
-          <span className="text-sm text-gray-600">Sync Ready</span>
-        </div>
-        
-        {/* Sync Button */}
+      {/* Desktop - Header Button (shown in header actions) */}
+      <div className="hidden md:flex">
         <Button
           onClick={triggerManualSync}
           disabled={manualSyncing}
           size="sm"
           variant="outline"
-          className="h-8 px-3"
+          className="p-2 md:px-3"
+          title="Manual Sync"
         >
-          <Zap className={`w-3 h-3 mr-1.5 ${manualSyncing ? 'animate-spin' : ''}`} />
-          {manualSyncing ? 'Syncing...' : 'Sync'}
+          <Zap className={`w-4 h-4 ${manualSyncing ? 'animate-spin' : ''}`} />
+          <span className="hidden md:inline ml-2">
+            {manualSyncing ? 'Syncing...' : 'Sync'}
+          </span>
         </Button>
       </div>
-    </div>
+    </>
   );
 };
 
