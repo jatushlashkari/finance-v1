@@ -95,3 +95,82 @@
 .transaction-card {
   opacity: 0;
 }
+
+/* Print Styles */
+@media print {
+  @page {
+    margin: 0.5in;
+    size: A4;
+  }
+  
+  body {
+    font-size: 12pt;
+    line-height: 1.4;
+    color: #000 !important;
+    background: #fff !important;
+  }
+  
+  /* Hide elements that shouldn't be printed */
+  .print\\:hidden {
+    display: none !important;
+  }
+  
+  /* Show elements only when printing */
+  .print\\:block {
+    display: block !important;
+  }
+  
+  /* Ensure proper spacing for print */
+  .print\\:p-8 {
+    padding: 2rem !important;
+  }
+  
+  /* Prevent page breaks in important sections */
+  .print-avoid-break {
+    page-break-inside: avoid;
+  }
+  
+  /* Force black text for print */
+  h1, h2, h3, h4, h5, h6 {
+    color: #000 !important;
+  }
+  
+  /* Remove shadows and borders that don't print well */
+  .shadow, .shadow-sm, .shadow-md, .shadow-lg {
+    box-shadow: none !important;
+  }
+  
+  /* Ensure borders are visible in print */
+  .border {
+    border: 1px solid #ccc !important;
+  }
+  
+  .border-2 {
+    border: 2px solid #333 !important;
+  }
+  
+  /* Invoice-specific print styles */
+  .bg-gray-800 {
+    background: #333 !important;
+    color: #fff !important;
+  }
+  
+  .bg-gray-50 {
+    background: #f9f9f9 !important;
+    border: 1px solid #ddd !important;
+  }
+  
+  /* Button styles for print */
+  button {
+    display: none !important;
+  }
+  
+  /* Card adjustments for print */
+  .bg-white {
+    background: #fff !important;
+  }
+  
+  .bg-gray-50 {
+    background: #f9f9f9 !important;
+  }
+}

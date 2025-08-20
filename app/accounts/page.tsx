@@ -20,9 +20,11 @@ import {
   Calendar,
   DollarSign,
   Hash,
-  Receipt
+  Receipt,
+  Download
 } from 'lucide-react';
 import Link from 'next/link';
+import TransactionInvoice from '../components/TransactionInvoice';
 
 interface AccountStats {
   accountHolderName: string;
@@ -62,6 +64,7 @@ const AccountsPage: React.FC = () => {
   const [transactionsPage, setTransactionsPage] = useState(1);
   const [transactionsTotal, setTransactionsTotal] = useState(0);
   const [hasMoreTransactions, setHasMoreTransactions] = useState(false);
+  const [selectedTransactionForPrint, setSelectedTransactionForPrint] = useState<Transaction | null>(null);
 
   const fetchBookmarkedAccounts = useCallback(async () => {
     try {
@@ -262,6 +265,11 @@ const AccountsPage: React.FC = () => {
     }
   };
 
+  const handleDownloadTransaction = (transaction: Transaction, event: React.MouseEvent) => {
+    event.stopPropagation();
+    setSelectedTransactionForPrint(transaction);
+  };
+
   if (selectedAccount) {
     return (
       <div className="min-h-screen bg-gray-50 p-4">
@@ -381,12 +389,23 @@ const AccountsPage: React.FC = () => {
                               {formatAmount(transaction.amount)}
                             </span>
                           </div>
-                          <Badge 
-                            variant={getStatusBadgeVariant(transaction.status)}
-                            className={`${getStatusColor(transaction.status)} border-none font-medium`}
-                          >
-                            {transaction.status}
-                          </Badge>
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => handleDownloadTransaction(transaction, e)}
+                              className="h-9 w-9 p-0 hover:bg-gray-100"
+                              title="Download Invoice"
+                            >
+                              <Download className="w-5 h-5 text-gray-600" />
+                            </Button>
+                            <Badge 
+                              variant={getStatusBadgeVariant(transaction.status)}
+                              className={`${getStatusColor(transaction.status)} border-none font-medium`}
+                            >
+                              {transaction.status}
+                            </Badge>
+                          </div>
                         </div>
 
                         {/* Date and Time */}
@@ -462,6 +481,7 @@ const AccountsPage: React.FC = () => {
                           <TableHead>Withdraw ID</TableHead>
                           <TableHead>UTR</TableHead>
                           <TableHead>Source</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -508,6 +528,17 @@ const AccountsPage: React.FC = () => {
                                 {transaction.source?.toUpperCase() || 'Unknown'}
                               </Badge>
                             </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => handleDownloadTransaction(transaction, e)}
+                                className="h-10 w-10 p-0 hover:bg-gray-100"
+                                title="Download Invoice"
+                              >
+                                <Download className="w-5 h-5 text-gray-600" />
+                              </Button>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -544,6 +575,15 @@ const AccountsPage: React.FC = () => {
             </CardContent>
           </Card>
         </div>
+        
+        {/* Transaction Invoice Modal */}
+        {selectedTransactionForPrint && (
+          <TransactionInvoice
+            transaction={selectedTransactionForPrint}
+            account={selectedAccount}
+            onClose={() => setSelectedTransactionForPrint(null)}
+          />
+        )}
       </div>
     );
   }
@@ -714,7 +754,7 @@ const AccountsPage: React.FC = () => {
                   {account.isBookmarked && (
                     <div className="mb-3">
                       <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
-                        <BookmarkCheck className="w-3 h-3 mr-1" />
+                        <BookmarkCheck className="w-4 h-4 mr-1" />
                         Bookmarked
                       </span>
                     </div>
@@ -742,15 +782,15 @@ const AccountsPage: React.FC = () => {
                       size="sm"
                       onClick={(e) => toggleBookmark(account, e)}
                       disabled={bookmarking === account.accountNumber}
-                      className="h-8 w-8 p-0"
+                      className="h-9 w-9 p-0"
                       title={account.isBookmarked ? 'Remove from bookmarks' : 'Add to bookmarks'}
                     >
                       {bookmarking === account.accountNumber ? (
                         <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></div>
                       ) : account.isBookmarked ? (
-                        <BookmarkCheck className="w-4 h-4 text-blue-600" />
+                        <BookmarkCheck className="w-5 h-5 text-blue-600" />
                       ) : (
-                        <Bookmark className="w-4 h-4 text-gray-400" />
+                        <Bookmark className="w-5 h-5 text-gray-400" />
                       )}
                     </Button>
                   </div>
