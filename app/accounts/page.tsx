@@ -26,6 +26,8 @@ import {
 import Link from 'next/link';
 import TransactionInvoice from '../components/TransactionInvoice';
 import AccountStatementPDF from '../components/AccountStatementPDF';
+import { useAuth } from '../contexts/AuthContext';
+import LoginPage from '../components/LoginPage';
 
 interface AccountStats {
   accountHolderName: string;
@@ -54,6 +56,7 @@ interface Transaction {
 }
 
 const AccountsPage: React.FC = () => {
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [accounts, setAccounts] = useState<AccountStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAccount, setSelectedAccount] = useState<AccountStats | null>(null);
@@ -294,6 +297,22 @@ const AccountsPage: React.FC = () => {
       setLoadingStatement(false);
     }
   };
+
+  // Authentication check
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-slate-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
 
   if (selectedAccount) {
     return (
