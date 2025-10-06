@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import TransactionInvoice from '../components/TransactionInvoice';
+import AccountStatementPDF from '../components/AccountStatementPDF';
 
 interface AccountStats {
   accountHolderName: string;
@@ -65,6 +66,9 @@ const AccountsPage: React.FC = () => {
   const [transactionsTotal, setTransactionsTotal] = useState(0);
   const [hasMoreTransactions, setHasMoreTransactions] = useState(false);
   const [selectedTransactionForPrint, setSelectedTransactionForPrint] = useState<Transaction | null>(null);
+  const [showStatementModal, setShowStatementModal] = useState(false);
+  const [statementTransactions, setStatementTransactions] = useState<Transaction[]>([]);
+  const [loadingStatement, setLoadingStatement] = useState(false);
 
   const fetchBookmarkedAccounts = useCallback(async () => {
     try {
@@ -270,6 +274,27 @@ const AccountsPage: React.FC = () => {
     setSelectedTransactionForPrint(transaction);
   };
 
+  const handleDownloadStatement = async () => {
+    if (!selectedAccount) return;
+    
+    setLoadingStatement(true);
+    try {
+      const response = await fetch(`/api/transactions/account/${encodeURIComponent(selectedAccount.accountNumber)}/successful`);
+      if (response.ok) {
+        const data = await response.json();
+        setStatementTransactions(data.transactions || []);
+        setShowStatementModal(true);
+      } else {
+        alert('Failed to fetch successful transactions. Please try again.');
+      }
+    } catch (error) {
+      console.error('Failed to fetch successful transactions:', error);
+      alert('Failed to fetch successful transactions. Please try again.');
+    } finally {
+      setLoadingStatement(false);
+    }
+  };
+
   if (selectedAccount) {
     return (
       <div className="min-h-screen bg-gray-50 p-4">
@@ -289,6 +314,24 @@ const AccountsPage: React.FC = () => {
               </Button>
               <h1 className="text-lg md:text-2xl font-bold text-gray-900">Account Details</h1>
             </div>
+            <Button
+              onClick={handleDownloadStatement}
+              disabled={loadingStatement || selectedAccount.successTransactions === 0}
+              className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white text-sm"
+            >
+              {loadingStatement ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span className="hidden sm:inline">Loading...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  <span className="hidden sm:inline">Download Statement</span>
+                  <span className="sm:inline md:hidden">Statement</span>
+                </>
+              )}
+            </Button>
           </div>
 
           {/* Account Details Card */}
@@ -582,6 +625,15 @@ const AccountsPage: React.FC = () => {
             transaction={selectedTransactionForPrint}
             account={selectedAccount}
             onClose={() => setSelectedTransactionForPrint(null)}
+          />
+        )}
+        
+        {/* Account Statement Modal */}
+        {showStatementModal && statementTransactions.length > 0 && (
+          <AccountStatementPDF
+            transactions={statementTransactions}
+            account={selectedAccount}
+            onClose={() => setShowStatementModal(false)}
           />
         )}
       </div>
